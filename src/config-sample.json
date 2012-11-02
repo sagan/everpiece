@@ -1,0 +1,10 @@
+{
+	"secret_key": "PUT_YOUR_SECRET_KEY_HERE",
+	"server_url": "http://localhost:3000",
+	"server_port": 3000,
+	"evernote": {
+		"api_key": "PUT_EVERNOTE_API_KEY_HERE",
+		"api_secret": "PUT_EVERNOTE_API_SECRET_HERE",
+		"developer_token": "PUT_YOUR_DEVELOPER_TOKEN_HERE"
+	}
+}
