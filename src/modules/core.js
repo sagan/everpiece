@@ -41,7 +41,10 @@ exports.auth_callback = function(req, res) {
 }
 
 exports.index = function(req, res){
-  res.render('index', { title: 'Ever Piece' });
+	res.render('index', {
+		title: 'Ever Piece',
+		root: config.server_url,
+	});
 };
 
 exports.get_tags = function(req, res){

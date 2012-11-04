@@ -6,9 +6,12 @@
 var express = require('express')
   , http = require('http')
   , path = require('path');
+var io = require('socket.io');
+
 var coreModule = require('./modules/core');
 var config = require('./config');
 var app = express();
+
 
 function authMiddleware (req, res, next) {
   var need_auth = false;
@@ -71,6 +74,16 @@ app.get('/status', function(req, res){
   });
 });
 
-http.createServer(app).listen(app.get('port'), function(){
+var server = http.createServer(app).listen(app.get('port'), function(){
   console.log("Express server listening on port " + app.get('port'));
 });
+io = io.listen(server);
+
+
+io.sockets.on('connection', function (socket) {
+  socket.emit('news', { hello: 'world' });
+  socket.on('my other event', function (data) {
+    console.log(data);
+  });
+});
+

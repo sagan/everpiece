@@ -3,11 +3,14 @@ html
 	head
 		meta(charset='UTF-8')
 		title= title
-		link(rel='stylesheet', href='/stylesheets/style.css?ver=0.1')
-		link(rel='stylesheet', href='/stylesheets/bootstrap/bootstrap.min.css?ver=2.2.1', media='screen')
-		script(src='/javascripts/jquery.js?ver=1.8.2')
-		script(src='/javascripts/bootstrap.min.js?ver=2.2.1')
-		script(src='/javascripts/i18n/en.js?ver=0.1')
-		script(src='/javascripts/core.js?ver=0.1')
+		link(rel='stylesheet', href='#{root}/stylesheets/style.css?ver=0.1')
+		link(rel='stylesheet', href='#{root}/stylesheets/bootstrap/bootstrap.min.css?ver=2.2.1', media='screen')
+		script(src='#{root}/javascripts/jquery.js?ver=1.8.2')
+		script(src='#{root}/socket.io/socket.io.js?ver=0.4.22')
+		script(src='#{root}/javascripts/bootstrap.min.js?ver=2.2.1')
+		script(src='#{root}/javascripts/i18n/en.js?ver=0.1')
+		script(src='#{root}/javascripts/core.js?ver=0.1')
+		script
+			var root="#{root}";
 	body
 		block content
