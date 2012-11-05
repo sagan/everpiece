@@ -210,7 +210,7 @@ $(function() {
 	    if( list == "latest" ) {
 			for(var i = 0; i < e.general_notes["latest"].length; i++) {
 	    		notes_list.append("<div class='note-list-item'></div>"
-	    			+ "<a href='>" + _l("/#/notes/" + e.general_notes["latest"][i])  + "'>"
+	    			+ "<a href='" + _l("/#/notes/" + e.general_notes["latest"][i])  + "'>"
 	    			+ e.notes[e.general_notes["latest"][i]].title
 	    			+ "</a>"
 	    			+ "</div>");
