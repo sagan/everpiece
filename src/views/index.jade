@@ -2,23 +2,26 @@ extends layout
 
 block content
 	div.row-fluid
-		h1.span8 #{title}
+		h1.span8
+			a(href="#{root}/#/") #{title}
 		ul.span4.nav.nav-pills
 			li 
 				a(href="")#user
 	div#content
-		div#tags.row-fluid
-			ul.nav.nav-pills
-				li
-					a(href="") Python
-				li
-					a(href="") PHP
-				li
-					a(href="") node.js
-				li
-					a(href="") +
+		div.row-fluid
+			ul#tags.nav.nav-pills
 		div#container.row-fluid
-			div.span4
-				p Hello
-			div.span8
-				p World!
+			div#note-list.span2
+				div.note-list-item
+					a
+				div.note-list-item
+					a
+			div#note-content.span10
+				div#note
+					div.row
+						h2.note-title.span10
+						div.note-actions.pull-right
+							i.icon-edit
+							a.note-edit-link Edit
+					div.row
+						div.note-content

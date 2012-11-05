@@ -95,13 +95,16 @@ Evernote.prototype.findNotes = function(user, words, option, callback)
 	noteFilter.order = Types.NoteSortOrder[(option.sortOrder || 'UPDATED')];
 	noteFilter.ascending = option.ascending || false;
 	noteFilter.inactive = option.inactive || false;
+	noteFilter.tagGuids = [];
+	if( option.tag )
+		noteFilter.tagGuids[0] = option.tag;
 	
 	var offset = option.offset || 0;
 	var count = option.count || 50;
 	
 	noteStore.findNotes(user.authToken, noteFilter, offset, count, function(err, response) {
-    callback(err, response)
-  });
+		callback(err, response)
+	});
 }
 
 /**

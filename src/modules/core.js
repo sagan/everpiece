@@ -53,10 +53,10 @@ exports.get_tags = function(req, res){
 	
 	evernote.listTags(userInfo, function(err, tagList) {
     	if (err) {
-			if(err == 'EDAMUserException') return res.send(err, 403);
-				return res.send(err, 500);
+			if(err == 'EDAMUserException') return res.send({error: err}, 403);
+				return res.send({error: err}, 500);
 		} else {
-			return res.send(tagList, 200);
+			return res.send({items: tagList}, 200);
 		}
 	});
 
@@ -71,15 +71,84 @@ exports.create_tag = function(req, res){
 	
 	evernote.createTag(userInfo, tag, function(err, tag) {
 		if (err) {
-			if(err == 'EDAMUserException') return res.send(err,403);
-				return res.send(err,500);
+			if(err == 'EDAMUserException') return res.send({error: err},403);
+				return res.send({error: err},500);
 		} 
 
-		return res.send(tag,200);
+		return res.send({item: tag}, 200);
 	});
 
 };
 
 exports.keywords = function(req, res) {
 
+};
+
+exports.get_note = function(req, res){
+	
+	var userInfo = req.session.user;
+	var guid = req.params.guid;
+	var option = req.query;
+
+	evernote.getNote(userInfo, guid, option, function(err, note) {
+		if (err) {
+			if(err == 'EDAMUserException') return res.send({error: err}, 403);
+			return res.send({error: err}, 500);
+		} 
+		return res.send({item: note},200);
+	});
+};
+
+exports.get_notes = function(req, res) {
+	var userInfo 	= req.session.user;
+	var offset 		= req.query.offset || 0;
+	var count 		= req.query.count || 50;
+	var words 		= req.query.words || '';
+	var sortOrder = req.query.sortOrder || 'UPDATED';
+	var ascending = req.query.ascending || false;
+	var tag = req.query.tag || '';
+
+	evernote.findNotes(userInfo,  words, { tag: tag, offset:offset, count:count, sortOrder:sortOrder, ascending:ascending }, function(err, noteList) {
+		if (err) {
+			if(err == 'EDAMUserException') return res.send({error: err}, 403);
+				return res.send({error: err}, 500);
+		} else {
+			return res.send({items: noteList.notes}, 200);
+		}
+	});
+};
+
+exports.create_note = function(req, res) {
+	
+	if(!req.body)
+		return res.send({error: 'Invalid content'}, 400);
+
+	var note = req.body;
+	var userInfo = req.session.user;
+	
+	evernote.createNote(userInfo, note, function(err, note) {
+		if (err) {
+			if(err == 'EDAMUserException') return res.send({error: err}, 403);
+				return res.send({error: err}, 500);
+		}
+		return res.send({item: note}, 200);
+	});
+};
+
+exports.update_note = function(req, res) {
+	
+	if(!req.body)
+		return res.send({error: 'Invalid content'},400);
+	
+	var userInfo = req.session.user;
+	var guid = req.params.guid;
+	var option = req.query;
+
+	evernote.getNote(userInfo, guid, option, function(err, note) {
+		if (err) {
+			if(err == 'EDAMUserException') return res.send({error: err},403);
+				return res.send({error: err}, 500);
+		}
+		return res.send({item: note}, 200);
+	});
 };

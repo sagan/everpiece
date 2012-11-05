@@ -34,9 +34,8 @@ function authMiddleware (req, res, next) {
 }
 
 app.configure(function(){
-  app.use(express.cookieParser(config.secret_key));
-  //app.use(express.session());
-  app.use(express.cookieSession());
+  app.use(express.cookieParser()); // config.secret_key
+  app.use(express.cookieSession({ secret: config.secret_key, cookie: { maxAge: 24 * 365 * 86400 }}));
   app.use(authMiddleware);
 
   app.set('port', process.env.PORT || 3000);
@@ -59,6 +58,11 @@ app.all('/auth', coreModule.auth);
 app.all('/auth_callback', coreModule.auth_callback);
 app.get('/tags', coreModule.get_tags);
 app.post('/tags', coreModule.create_tag);
+app.get('/notes', coreModule.get_notes);
+app.post('/notes', coreModule.create_note);
+app.get('/notes/:guid', coreModule.get_note);
+app.post('/notes/:guid', coreModule.update_note);
+
 
 app.all('/logout', function(req, res){
   var callback = req.query.callback;
