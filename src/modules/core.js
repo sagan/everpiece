@@ -141,10 +141,9 @@ exports.update_note = function(req, res) {
 		return res.send({error: 'Invalid content'},400);
 	
 	var userInfo = req.session.user;
-	var guid = req.params.guid;
-	var option = req.query;
+	var note = req.body;
 
-	evernote.getNote(userInfo, guid, option, function(err, note) {
+	evernote.updateNote(userInfo, note, function(err, note) {
 		if (err) {
 			if(err == 'EDAMUserException') return res.send({error: err},403);
 				return res.send({error: err}, 500);

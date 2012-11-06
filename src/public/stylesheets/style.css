@@ -1,8 +1,25 @@
 body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+  //font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
 a {
   color: #00B7FF;
+}
+
+#note-edit textarea {
+    width: 100%;
+    height: 200px;
+}
+
+#note-edit input {
+	width: 100%;
+}
+
+#sidebar {
+	//min-height: 1000px;
+}
+
+.note h2 {
+	display: inline;
+	margin-right: 20px;
 }

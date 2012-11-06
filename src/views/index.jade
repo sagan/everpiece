@@ -1,27 +1,46 @@
 extends layout
 
 block content
-	div.row-fluid
-		h1.span8
-			a(href="#{root}/#/") #{title}
+	div.offset1.row-fluid
+		h1.span7
+			a(href="#{root}/#/") #{title} 
 		ul.span4.nav.nav-pills
 			li 
 				a(href="")#user
-	div#content
-		div.row-fluid
+	div#content.offset1.row-fluid
+		div
 			ul#tags.nav.nav-pills
+				button(style="display: inline;").btn#add-note-action
+					i.icon-edit
+					span  Create Note
 		div#container.row-fluid
-			div#note-list.span2
-				div.note-list-item
-					a
-				div.note-list-item
-					a
-			div#note-content.span10
-				div#note
+			div#sidebar.span2
+				div.row
+					form#search.navbar-search
+						input(type="text", name="words").search-query.input-small
+						button.btn
+							i.icon-search
+				div.row
+					ul#note-list.note-list
+			div#content.offset1.span8
+				div.row#note.note
 					div.row
-						h2.note-title.span10
-						div.note-actions.pull-right
-							i.icon-edit
-							a.note-edit-link Edit
+						h2.note-title
+						span.note-actions
+							button.btn.note-edit-link
+								i.icon-edit
+								span  Edit
 					div.row
-						div.note-content
+						div.span6.note-content
+				div.row#note-edit
+					div.span6
+						form.row
+							input(type="hidden", name="guid")
+							div
+								input(type="text", name="title")
+							textarea(name="content")#note-edit-content
+							p.btn-toolbar
+								button(type="button")#note-edit-save.btn.btn-primary save 
+								button(type="button")#note-edit-discard.btn  discard
+					div.span4
+					
