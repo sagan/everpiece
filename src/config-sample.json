@@ -2,6 +2,11 @@
 	"secret_key": "PUT_YOUR_SECRET_KEY_HERE",
 	"server_url": "http://localhost:3000",
 	"server_port": 3000,
+	"db_host": "localhost",
+	"db_port": 27017,
+	"db_name": "test",
+	"db_user": "user",
+	"db_pass": "123456",
 	"evernote": {
 		"api_key": "PUT_EVERNOTE_API_KEY_HERE",
 		"api_secret": "PUT_EVERNOTE_API_SECRET_HERE",

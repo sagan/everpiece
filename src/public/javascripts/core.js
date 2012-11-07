@@ -78,15 +78,15 @@ updateSequenceNum
 
 url: all has a hash indicator and starts with /
 #/ latest notes
-#/note/:guid
-#/note/:guid/edit
-#/tag/:guid
+#/note/:_id
+#/note/:_id/edit
+#/tag/:_id
 #/create
 
 server API
 /tags, get all tags, currently.
 /notes?tag=abc&offset=&count=&words=
-/notes/:guid POST, edit
+/notes/:_id POST, edit
 /notes POST create
 
 */
@@ -99,12 +99,39 @@ $(function() {
 
 	// all data item has a last modified timestamp field.
 	e.session = {};
-	e.tags = {}; // guid as key => {guid: "", parent: "", name: "", desc: ""}
-	e.notes = {}; // guid as key => {guid: "", tags:[tags guid list], content: "", contentHash: "", contentLength: ""};
-	e.tag_notes = {}; // tag guid key => [notes guid list]
+	e.tags = {}; // _id as key => {_id: "", parent: "", name: "", desc: ""}
+	e.notes = {}; // _id as key => {_id: "", tags:[tags _id list], content: "", contentHash: "", contentLength: ""};
+	e.tag_notes = {}; // tag _id key => [notes _id list]
 	e.general_notes = {
 		latest: [],
 		latest_viewed: []
+	};
+
+	e.get_tag_id = function(name) {
+		for(var id in e.tags) {
+			if( e.tags.hasOwnProperty(id) ) {
+				if( e.tags[id].name == name )
+					return id;
+			}
+		}
+		return null;
+	};
+
+	e.get_tag_notes_list = function(name) {
+		var tagid = e.get_tag_id(name);
+		if( !tagid )
+			return null;
+		if( !e.tag_notes[tagid] )
+			e.tag_notes[tagid] = [];
+		return e.tag_notes[tagid];
+	};
+
+	e.get_note_markdown_html = function(markdown) {
+		try {
+			return e.md.makeHtml( markdown );
+		} catch (e) {
+			return "";
+		}
 	};
 
 	e.getSession = function(callback) {
@@ -130,8 +157,8 @@ $(function() {
 			success: function(data, textStatus) {
 				if( !data.error ) {
 					for(var i = 0; i < data.items.length; i++) {
-						e.tags[ data.items[i].guid ] = data.items[i];
-						e.tags[ data.items[i].guid ].timespamp = (new Date).getTime();
+						e.tags[ data.items[i]._id ] = data.items[i];
+						e.tags[ data.items[i]._id ].timespamp = (new Date).getTime();
 					}
 					callback({});
 				} else {
@@ -154,8 +181,8 @@ $(function() {
 		$.ajax(root + "/notes/" + id, {
 			success: function(data, textStatus) {
 				if( !data.error ) {
-					e.notes[data.item.guid] = data.item;
-					e.notes[data.item.guid].timespamp = (new Date).getTime();
+					e.notes[data.item._id] = data.item;
+					e.notes[data.item._id].timespamp = (new Date).getTime();
 					callback({});
 				} else {
 					callback({
@@ -181,15 +208,12 @@ $(function() {
 			success: function(data, textStatus) {
 				if( !data.error ) {
 					for(var i = 0; i < data.items.length; i++) {
-						var content = null;
-						if( e.notes[ data.items[i].guid ] && e.notes[ data.items[i].guid ].content !== null) {
-							content = e.notes[ data.items[i].guid ].content;
-						}
-						e.notes[ data.items[i].guid ] = data.items[i];
-						if( content !== null && e.notes[ data.items[i].guid ].content === null )
-							e.notes[ data.items[i].guid ].content = content;
+						var content = e.notes[ data.items[i]._id ] ? e.notes[ data.items[i]._id ].content : undefined;
+						e.notes[ data.items[i]._id ] = data.items[i];
+						if( e.notes[ data.items[i]._id ].content === undefined )
+							e.notes[ data.items[i]._id ].content = content;
 
-						e.notes[ data.items[i].guid ].timespamp = (new Date).getTime();
+						e.notes[ data.items[i]._id ].timespamp = (new Date).getTime();
 					}
 
 					if( options.tag ) {
@@ -197,9 +221,10 @@ $(function() {
 							e.tag_notes[options.tag] = [];
 						for(var i = 0; i < data.items.length; i++) {
 							var item = data.items[i];
-							for( var j = 0; j < item.tagGuids.length; j++ ) {
-								if( $.inArray( item.guid, e.tag_notes[item.tagGuids[j]]) == -1 ) {
-									e.tag_notes[item.tagGuids[j]].push(item.guid);
+							for( var j = 0; j < item.tags.length; j++ ) {
+								var tagnoteslist = e.get_tag_notes_list( item.tags[j] );
+								if( $.inArray( item._id, tagnoteslist) == -1 ) {
+									tagnoteslist.push(item._id);
 								}
 							}
 						}
@@ -207,8 +232,8 @@ $(function() {
 						e.general_notes["latest"] = [];
 						for(var i = 0; i < data.items.length; i++) {
 							var item = data.items[i];
-							//if( $.inArray( item.guid, e.general_notes["latest"]) == -1 ) {
-								e.general_notes["latest"].push(item.guid);
+							//if( $.inArray( item._id, e.general_notes["latest"]) == -1 ) {
+								e.general_notes["latest"].push(item._id);
 							//}
 						}
 					}
@@ -252,13 +277,19 @@ $(function() {
 		return xml;
 	};
 
-	e.create_or_update_note = function(note, callback) {
-		if( !callback )
-			callback = e.renderer;
-		note.content = e.make_note_xml( note.content );
+	e.create_or_update_note = function(note, callback_user) {
+		if( !callback_user )
+			var callback = e.renderer;
+		else {
+			var callback = function() {
+				callback_user();
+				e.renderer();
+			}
+		}
+		//note.content = e.make_note_xml( note.content );
 
-		if( note.guid )
-			var url = _l("/notes/" + note.guid);
+		if( note._id )
+			var url = _l("/notes/" + note._id);
 		else
 			var url = _l("/notes");
 
@@ -268,8 +299,8 @@ $(function() {
 			type: "POST",
 			contentType: "application/json; charset=utf-8",
 			success: function(data) {
-				e.notes[data.item.guid] = data.item;
-				e.notes[data.item.guid].content = note.content;
+				e.notes[data.item._id] = data.item;
+				e.notes[data.item._id].content = note.content;
 				callback(data);
 			},
 			error: function(e) {
@@ -278,25 +309,46 @@ $(function() {
 		});
 	};
 
-	e.route = function(event) {
+	// a partial reflesh event!
+	//
+	e.route = function(path) {
+	    console.log("route ", path);
+	    var match;
 
+	    if( path == "/" ) {
+	    	$("#note-list").attr("data-list", "latest");
+	    	e.update_notes();
+	    } else if( match = path.match(/^\/tag\/(.+)$/) ) {
+	    	var tag = match[1];
+	    	console.log("route goto tag: ", tag);
+	    	$("#note-list").attr("data-list", tag);
+	    	e.update_notes({tag: tag});
+	    }  else if( match = path.match(/^\/notes\/(.+)$/) ) {
+	    	var id = match[1];
+	    	$("#note").attr("data-id", id);
+	    	e.get_note(id);
+	    	$.address.value(path);
+	    }
+
+	    e.renderer();
 	};
 
 	// view layer
 	e.rebind_links = function() {
-		$('a').address(function() {  
-    		return $(this).attr('href').replace(/^.*#/, '');  
-		});
-		/*   
+		//$('a').address(function() {  
+    	//	return $(this).attr('href').replace(/^.*#/, '');  
+		//});
+		///*
 		$('a').each(function() {
 			if( !$(this).attr("data-aready") ) {
     			$(this).attr("data-aready", 1);
-    			$(this).click( function() {
-    				$.address.value( $(this).attr('href').replace(/^.*#/, '') );
+    			$(this).click( function(event) {
+    				e.route( $(this).attr('href').replace(/^.*#/, '') );
+    				event.preventDefault();
     			})
     		}
 		});
-		*/
+		//*/
 	};
 
 	e.renderer_note = function(dom) {
@@ -314,13 +366,8 @@ $(function() {
 	    	if ( e.notes[id] ) {
 	    		title = e.notes[id].title;
 	    		if ( e.notes[id].content !== null ) {
-	    			var markdown = e.parse_note_md( e.notes[id].content );
-	    			if( markdown !== false ) {
-	    				content = e.md.makeHtml(markdown);
-	    				note_actions.show();
-	    			} else {
-	    				content = e.notes[id].content;
-	    			}
+	    			content = e.get_note_markdown_html( e.notes[id].content );
+	    			note_actions.show();
 	    		}
 	    		else
 	    			content = __("loading");
@@ -370,15 +417,15 @@ $(function() {
 	    } else if( list == "search" ) {
 
 	    } else if( list != "" ) { // tag
-	    	if( !e.tag_notes[list] )
-	    		e.tag_notes[list] = [];
-			for(var i = 0; i < e.tag_notes[list].length; i++) {
-	    		notes_list.append("<div class='note-list-item'></div>"
-	    			+ "<a href='" + _l("/#/notes/" + e.tag_notes[list][i])  + "'>"
-	    			+ e.notes[e.tag_notes[list][i]].title
-	    			+ "</a>"
-	    			+ "</div>");
-	    	}
+	    	var tagnoteslist = e.get_tag_notes_list( list );
+	    	if( tagnoteslist )
+				for(var i = 0; i < tagnoteslist.length; i++) {
+	    			notes_list.append("<div class='note-list-item'></div>"
+	    				+ "<a href='" + _l("/#/notes/" + tagnoteslist[i])  + "'>"
+	    				+ e.notes[tagnoteslist[i]].title
+	    				+ "</a>"
+	    				+ "</div>");
+	    		}
 	    }
 	};
 
@@ -389,10 +436,10 @@ $(function() {
 		//tags.empty();
 		$("li", tags).remove();
 
-		for(var taguid in e.tags) {
-			if( e.tags.hasOwnProperty(taguid) )  {
+		for(var id in e.tags) {
+			if( e.tags.hasOwnProperty(id) )  {
 				$("button", tags).before("<li ><a href='"
-					+ root + "/#tag/" + taguid + "'><i class='icon-tag'></i> " + e.tags[taguid].name + "</a></li>");
+					+ root + "/#/tag/" + e.tags[id].name + "'><i class='icon-tag'></i> " + e.tags[id].name + "</a></li>");
 			}
 		}
 
@@ -424,44 +471,30 @@ $(function() {
 	$("#note-list").attr("data-list", "latest");
 	$("#note-edit").hide();
 
-	$.address.change(function(event) {
+	$.address.externalChange(function(event) {
 		var path = event.path;
 	    console.log("$.address.change ", path);
-	    var match;
-
-	    if( path == "/" ) {
-	    	$("#note-list").attr("data-list", "latest");
-	    	e.update_notes();
-	    } else if( match = path.match(/^\/tag\/(.+)$/) ) {
-	    	var tag = match[1];
-	    	$("#note-list").attr("data-list", tag);
-	    	e.update_notes({tag: tag});
-	    }  else if( match = path.match(/^\/notes\/(.+)$/) ) {
-	    	var id = match[1];
-	    	$("#note").attr("data-id", id);
-	    	e.get_note(id);
-	    }
-
-	    e.renderer();
+	    e.route( path );
 	});
 
-	$("#search").submit(function(e) {
+	$("#search").submit(function(event) {
 		var words = $('input[name="words"]', this).val();
 
 		if( words != "" && words != $.address.value() ) {
-			$.address.value("/search/" + words);
+			e.route("/search/" + words);
 			$("#note-list").attr("data-list", "search");
 			$("#note-list").attr("data-list-keyword", words);
 			e.renderer();
 		}
-		e.preventDefault();
+		event.preventDefault();
 	});
 
 	$("#note .note-edit-link").click(function() {
 		var id = $("#note").attr("data-id");
-		$('#note-edit input[name="guid"]').val( id );
+		$('#note-edit input[name="_id"]').val( id );
 		$('#note-edit form input[name="title"]').val( e.notes[id].title);
-		$('#note-edit form textarea[name="content"]').val( e.parse_note_md( e.notes[id].content ) );
+		$('#note-edit form input[name="tags"]').val( e.notes[id].tags ? e.notes[id].tags.join(", ") : "");
+		$('#note-edit form textarea[name="content"]').val( e.notes[id].content );
 
 		$("#note-edit").show();
 		$("#note").hide();
@@ -475,11 +508,21 @@ $(function() {
 	});
 
 	$("#note-edit-save").click(function() {
-		e.create_or_update_note( $("#note-edit form").serializeObject());
+		var note = $("#note-edit form").serializeObject();
+		note.tags = note.tags.split(/[\s,]+/);
+
+		e.create_or_update_note( note, e.update_tags );
+
 		$("#note-edit").hide();
 		$("#note").show();
 		$("#add-note-action").show();
 		$("#note-edit form input, #note-edit form textarea").val("");
+
+		if( note._id ) {
+			e.route("/notes/" + note._id);
+		} else {
+			e.route("/");
+		}
 
 	});
 

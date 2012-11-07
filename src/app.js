@@ -13,10 +13,10 @@ var config = require('./config');
 var app = express();
 
 
-function authMiddleware (req, res, next) {
+function auth(req, res, next) {
   var need_auth = false;
 
-  if( ! req.session.user ) {
+  if( !req.session.user || !req.session.user.username ) {
     if ( req.path.match(/^\/tags/)
       || req.path.match(/^\/notes/)
       ) {
@@ -36,7 +36,7 @@ function authMiddleware (req, res, next) {
 app.configure(function(){
   app.use(express.cookieParser()); // config.secret_key
   app.use(express.cookieSession({ secret: config.secret_key, cookie: { maxAge: 24 * 365 * 86400 }}));
-  app.use(authMiddleware);
+  app.use(auth);
 
   app.set('port', process.env.PORT || 3000);
   app.set('views', __dirname + '/views');
@@ -60,8 +60,8 @@ app.get('/tags', coreModule.get_tags);
 app.post('/tags', coreModule.create_tag);
 app.get('/notes', coreModule.get_notes);
 app.post('/notes', coreModule.create_note);
-app.get('/notes/:guid', coreModule.get_note);
-app.post('/notes/:guid', coreModule.update_note);
+app.get('/notes/:id', coreModule.get_note);
+app.post('/notes/:id', coreModule.update_note);
 
 
 app.all('/logout', function(req, res){

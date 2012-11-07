@@ -10,6 +10,8 @@
     "jade": "*",
     "oauth": "*",
     "thrift": "*",
-    "socket.io": "*"
+    "socket.io": "*",
+    "mongodb": "*",
+    "mongoose": "*"
   }
 }
