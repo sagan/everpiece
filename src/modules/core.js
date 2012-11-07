@@ -12,6 +12,10 @@ var evernote = new Evernote(
 	true
 );
 
+var escape_regexp = function(str) {
+    return (str+'').replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
+};
+
 var add_tags = function(username, tags) {
 	tags.forEach(function(name) {
 		if( name != "" )
@@ -157,6 +161,8 @@ exports.get_notes = function(req, res) {
 	};
 	if( tag )
 		conditions.tags = { $all: tag.split(/[\s,]+/) };
+	if( search )
+		conditions.title = { $regex: search, $options: 'i' };
 
 	var fields = '_id type tags archive star title updated created';
 

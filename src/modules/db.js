@@ -1,9 +1,6 @@
 var config = require("../config");
 var mongoose = require('mongoose')
-var db = mongoose.createConnection(config.db_host, config.db_name, config.db_port, {
-	user: config.db_user,
-	pass: config.db_pass,
-});
+var db = mongoose.createConnection(config.db_conn);
 
 db.on('error', console.error.bind(console, 'connection error:'));
 

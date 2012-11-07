@@ -101,29 +101,26 @@ $(function() {
 	e.session = {};
 	e.tags = {}; // _id as key => {_id: "", parent: "", name: "", desc: ""}
 	e.notes = {}; // _id as key => {_id: "", tags:[tags _id list], content: "", contentHash: "", contentLength: ""};
-	e.tag_notes = {}; // tag _id key => [notes _id list]
-	e.general_notes = {
+	e.notes_tag = {}; // tag _id key => [notes _id list]
+	e.notes_search = {}; 
+	e.notes_general = {
 		latest: [],
 		latest_viewed: []
 	};
 
-	e.get_tag_id = function(name) {
-		for(var id in e.tags) {
-			if( e.tags.hasOwnProperty(id) ) {
-				if( e.tags[id].name == name )
-					return id;
-			}
-		}
-		return null;
+
+	e.get_notes_list_tag = function(name) {
+		name = encodeURIComponent(name);
+		if( !e.notes_tag[name] )
+			e.notes_tag[name] = [];
+		return e.notes_tag[name];
 	};
 
-	e.get_tag_notes_list = function(name) {
-		var tagid = e.get_tag_id(name);
-		if( !tagid )
-			return null;
-		if( !e.tag_notes[tagid] )
-			e.tag_notes[tagid] = [];
-		return e.tag_notes[tagid];
+	e.get_notes_list_search = function( search ) {
+		search = encodeURIComponent(search);
+		if( !e.notes_search[search] )
+			e.notes_search[search] = [];
+		return e.notes_search[search];
 	};
 
 	e.get_note_markdown_html = function(markdown) {
@@ -198,6 +195,17 @@ $(function() {
 		});
 	};
 
+	e.update_notes_list = function(list, notes) {
+		for(var i = 0; i < notes.length; i++) {
+			var item = notes[i];
+			for( var j = 0; j < item.tags.length; j++ ) {
+				if( $.inArray( item._id, list) == -1 ) {
+					list.push(item._id);
+				}
+			}
+		}
+	};
+
 	e.update_notes = function(options, callback) {
 		if( ! options )
 			options = {};
@@ -217,25 +225,23 @@ $(function() {
 					}
 
 					if( options.tag ) {
-						if( !e.tag_notes[options.tag] )
-							e.tag_notes[options.tag] = [];
 						for(var i = 0; i < data.items.length; i++) {
 							var item = data.items[i];
 							for( var j = 0; j < item.tags.length; j++ ) {
-								var tagnoteslist = e.get_tag_notes_list( item.tags[j] );
+								var tagnoteslist = e.get_notes_list_tag( item.tags[j] );
 								if( $.inArray( item._id, tagnoteslist) == -1 ) {
 									tagnoteslist.push(item._id);
 								}
 							}
 						}
+					} else if ( options.s ) {
+						var list = e.get_notes_list_search( options.s );
+						list.length = 0;
+						e.update_notes_list(list, data.items);
 					} else {
-						e.general_notes["latest"] = [];
-						for(var i = 0; i < data.items.length; i++) {
-							var item = data.items[i];
-							//if( $.inArray( item._id, e.general_notes["latest"]) == -1 ) {
-								e.general_notes["latest"].push(item._id);
-							//}
-						}
+						var list = e.notes_general["latest"];
+						list.length = 0;
+						e.update_notes_list(list, data.items);
 					}
 
 					callback({});
@@ -313,19 +319,33 @@ $(function() {
 	//
 	e.route = function(path) {
 	    console.log("route ", path);
+	    
+	    var notes_list_main = $("#note-list");
+	    var note = $("#note");
 	    var match;
 
 	    if( path == "/" ) {
-	    	$("#note-list").attr("data-list", "latest");
+	    	notes_list_main.attr("data-list", "latest");
 	    	e.update_notes();
 	    } else if( match = path.match(/^\/tag\/(.+)$/) ) {
 	    	var tag = match[1];
-	    	console.log("route goto tag: ", tag);
-	    	$("#note-list").attr("data-list", tag);
+	    	notes_list_main.attr("data-list", "tag");
+	    	notes_list_main.attr("data-value", tag);
 	    	e.update_notes({tag: tag});
-	    }  else if( match = path.match(/^\/notes\/(.+)$/) ) {
+	    } else if( match = path.match(/^\/search\/(.*)$/) ) {
+	    	var search = match[1].trim();
+	    	
+	    	if( search != "" ) {
+	    		notes_list_main.attr("data-list", "search");
+	    		notes_list_main.attr("data-value", search);
+	    		e.update_notes({s: search});
+	    	} else {
+	    		notes_list_main.attr("data-list", "latest");
+	    		e.update_notes();
+	    	}
+	    }else if( match = path.match(/^\/notes\/(.+)$/) ) {
 	    	var id = match[1];
-	    	$("#note").attr("data-id", id);
+	    	note.attr("data-id", id);
 	    	e.get_note(id);
 	    	$.address.value(path);
 	    }
@@ -401,32 +421,31 @@ $(function() {
 	e.renderer_list = function(list_dom) {
 		notes_list = $(list_dom);
 		notes_list.empty();
+
 	    var list = notes_list.attr("data-list");
+	    var value = notes_list.attr("data-value");
 	    
-	    if( list == undefined)
+	    if( !list )
 	    	return;
 
-	    if( list == "latest" ) {
-			for(var i = 0; i < e.general_notes["latest"].length; i++) {
-	    		notes_list.append("<div class='note-list-item'></div>"
-	    			+ "<a href='" + _l("/#/notes/" + e.general_notes["latest"][i])  + "'>"
-	    			+ e.notes[e.general_notes["latest"][i]].title
-	    			+ "</a>"
-	    			+ "</div>");
-	    	}
-	    } else if( list == "search" ) {
+	    var note_list = [];
 
-	    } else if( list != "" ) { // tag
-	    	var tagnoteslist = e.get_tag_notes_list( list );
-	    	if( tagnoteslist )
-				for(var i = 0; i < tagnoteslist.length; i++) {
-	    			notes_list.append("<div class='note-list-item'></div>"
-	    				+ "<a href='" + _l("/#/notes/" + tagnoteslist[i])  + "'>"
-	    				+ e.notes[tagnoteslist[i]].title
-	    				+ "</a>"
-	    				+ "</div>");
-	    		}
+	    if( list == "latest" ) {
+	    	note_list = e.notes_general["latest"];
+	    } else if( list == "search" ) {
+	    	note_list = e.get_notes_list_search( value );
+	    } else if( list == "tag" ) { // tag
+	    	note_list = e.get_notes_list_tag( value );
 	    }
+
+	    for(var i = 0; i < note_list.length; i++) {
+	    	notes_list.append("<div class='note-list-item'></div>"
+	    		+ "<a href='" + _l("/#/notes/" + note_list[i])  + "'>"
+	    		+ e.notes[note_list[i]].title
+	    		+ "</a>"
+	    		+ "</div>");
+	    }
+
 	};
 
 	e.renderer = function() {
@@ -479,13 +498,7 @@ $(function() {
 
 	$("#search").submit(function(event) {
 		var words = $('input[name="words"]', this).val();
-
-		if( words != "" && words != $.address.value() ) {
-			e.route("/search/" + words);
-			$("#note-list").attr("data-list", "search");
-			$("#note-list").attr("data-list-keyword", words);
-			e.renderer();
-		}
+		e.route("/search/" + words);
 		event.preventDefault();
 	});
 

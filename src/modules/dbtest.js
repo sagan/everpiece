@@ -35,6 +35,6 @@ db.once('open', function () {
 });
 
 
-RegExp.quote = function(str) {
+var escape_regexp = function(str) {
     return (str+'').replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
 };
