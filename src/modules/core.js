@@ -202,8 +202,8 @@ exports.create_note = function(req, res) {
 	var note = req.body;
 
 	var create_note = new Note();
-	create_note.title = note.title;
-	create_note.content = note.content;
+	create_note.title = note.title || "";
+	create_note.content = note.content || "";
 	create_note.username = username;
 	create_note.syncd = false;
 	if( note.tags instanceof Array )
@@ -211,7 +211,7 @@ exports.create_note = function(req, res) {
 
 	Note.create(create_note, function(err, note) {
 		if (err) {
-			res.send({error: err}, 200);
+			return res.send({error: err}, 200);
 		}
 		add_tags(note.username, note.tags);
 		return res.send({item: note}, 200);

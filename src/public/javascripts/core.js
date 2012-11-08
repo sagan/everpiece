@@ -30,6 +30,22 @@ function insertTab(o, e) {
 	return true;
 }
 
+var _entityMap = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': '&quot;',
+    "'": '&#39;',
+    "/": '&#x2F;'
+  };
+
+function escapeHtml(string) {
+	// or return $('<div/>').text(string).html();
+	return String(string).replace(/[&<>"'\/]/g, function (s) {
+		return _entityMap[s];
+	});
+}
+
 
 $.fn.serializeObject = function() {
     var o = {};
@@ -91,9 +107,10 @@ server API
 
 */
 
-var EVERPIECE = {};
+
 $(function() {
-	var e = window.EVERPIECE;
+	window.EVERPIECE = window.EVERPIECE || {};
+	var e = window.EVERPIECE
 
 	e.md = new Showdown.converter();
 
@@ -131,7 +148,7 @@ $(function() {
 		}
 	};
 
-	e.getSession = function(callback) {
+	e.get_session = function(callback) {
 		$.ajax(root + "/status", {
 			success: function(data) {
 				if( data.username ) {
@@ -354,21 +371,18 @@ $(function() {
 	};
 
 	// view layer
+	var progress_link = function(event) {
+		e.route( $(this).attr('href').replace(/^.*#/, '') );
+    	event.preventDefault();
+	};
+
 	e.rebind_links = function() {
-		//$('a').address(function() {  
-    	//	return $(this).attr('href').replace(/^.*#/, '');  
-		//});
-		///*
 		$('a').each(function() {
 			if( !$(this).attr("data-aready") ) {
     			$(this).attr("data-aready", 1);
-    			$(this).click( function(event) {
-    				e.route( $(this).attr('href').replace(/^.*#/, '') );
-    				event.preventDefault();
-    			})
+    			$(this).click( progress_link );
     		}
 		});
-		//*/
 	};
 
 	e.renderer_note = function(dom) {
@@ -384,7 +398,7 @@ $(function() {
 	    
 	    if( id  ) {
 	    	if ( e.notes[id] ) {
-	    		title = e.notes[id].title;
+	    		title = escapeHtml( e.notes[id].title );
 	    		if ( e.notes[id].content !== null ) {
 	    			content = e.get_note_markdown_html( e.notes[id].content );
 	    			note_actions.show();
@@ -441,7 +455,7 @@ $(function() {
 	    for(var i = 0; i < note_list.length; i++) {
 	    	notes_list.append("<div class='note-list-item'></div>"
 	    		+ "<a href='" + _l("/#/notes/" + note_list[i])  + "'>"
-	    		+ e.notes[note_list[i]].title
+	    		+ ( e.notes[note_list[i]].title ? escapeHtml( e.notes[note_list[i]].title ) : "&nbsp;&nbsp;&nbsp;&nbsp;" )
 	    		+ "</a>"
 	    		+ "</div>");
 	    }
@@ -458,7 +472,7 @@ $(function() {
 		for(var id in e.tags) {
 			if( e.tags.hasOwnProperty(id) )  {
 				$("button", tags).before("<li ><a href='"
-					+ root + "/#/tag/" + e.tags[id].name + "'><i class='icon-tag'></i> " + e.tags[id].name + "</a></li>");
+					+ root + "/#/tag/" + escapeHtml( e.tags[id].name ) + "'><i class='icon-tag'></i> " + escapeHtml( e.tags[id].name ) + "</a></li>");
 			}
 		}
 
@@ -475,12 +489,14 @@ $(function() {
 	};
 
 	
+
+
 });
 
 
 $(function() {
 	var e = window.EVERPIECE;
-	window.e = e;
+	window.e = e; // = =
 
 	$("#note-edit-content").keydown(function(e) {
 		insertTab(this, e);
@@ -546,7 +562,7 @@ $(function() {
 		$("#add-note-action").show();
 	});
 
-	e.getSession(function() {
+	e.get_session(function() {
 		if( e.session.username ) {
 			$("#user").html(e.session.username);
 			$("#user").attr("href", "/logout");

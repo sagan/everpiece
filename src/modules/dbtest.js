@@ -38,3 +38,17 @@ db.once('open', function () {
 var escape_regexp = function(str) {
     return (str+'').replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
 };
+
+/*
+
+rm  /var/lib/mongodb/mongod.lock
+
+sudo mongod -f /etc/mongodb.conf --repair
+
+The right angle bracket (>) […] must, for compatibility,
+be escaped using either " &gt; " or a character reference 
+when it appears in the string " ]]> " in content, 
+when that string is not marking the end of a CDATA section.
+— http://www.w3.org/TR/REC-xml/#dt-chardata
+
+*/

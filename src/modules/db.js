@@ -31,35 +31,38 @@ var now = function() {
 };
 
 var noteSchema = new mongoose.Schema({
-	username: { type: String, index: true },
-	syncd: { type: Boolean, index: true, default: false },
-	type: {type: String, index: true, default: "markdown"},
-	tags: { type: [String], index: true },
-	archive: { type: Boolean, index: true },
-	star: { type: Boolean, index: true },
+	username: { type: String, index: true, required: true },
 
+	syncd: { type: Boolean, index: true, default: false, required: true },
+	type: {type: String, index: true, default: "markdown", required: true},
+	archive: { type: Boolean, index: true, default: false, required: true },
+	star: { type: Boolean, index: true, default: false, required: true },
+	title: { type: String, index: true, default: "", required: true },
+	created: { type: Date, index: true, default: now, required: true },
+	updated: { type: Date, index: true, default: now, required: true },
+	
+	content: { type: String, index: false, default: "" }, // storage markdown
+	tags: { type: [String], index: true },
 	guid: { type: String, index: true },
-	title: { type: String, index: true },
-	content: { type: String, index: false }, // storage markdown
-	created: { type: Date, index: true, default: now },
-	updated: { type: Date, index: true, default: now },
 	updateSequenceNum: { type: Number, index: true },
 	//tagGuids: { type: [String], index: true },
 });
 
 var userSchema =  new mongoose.Schema({
-	username: { unique: true, type: String, index: true },
-	notebookGuid: { type: String, index: true },
-	token: { type: String, index: true },
-	status: {type: String, index: true}, //"invalid", "disabled", "error", "normal" or ""
+	username: { unique: true, type: String, index: true, required: true },
+	notebookGuid: { type: String, index: true, required: true },
+
+	token: { type: String, index: true, required: true, default: "" },
+	status: { type: String, index: true, required: true, default: ""}, //"invalid", "disabled", "error", "normal" or ""
 });
 
 
 var tagSchema = new mongoose.Schema({
-	username: { type: String, index: true },
+	username: { type: String, index: true, required: true },
+	name: { type: String, index: true, required: true },
+
 	guid: { type: String, index: true },
 	syncd: { type: Boolean, index: true, default: false },
-	name: { type: String, index: true },
 	parentGuid: { type: String, index: true },
 	updateSequenceNum: { type: String, index: true},
 });
