@@ -175,13 +175,8 @@ $(function() {
 		if( !Note.updating )
 		NoteSync.findById(id, function(err, note) {
 			if( !err && note ) {
-				if( !self.notes[note._id] || 
-						( (self.notes[note._id].content === undefined ) ||
-						note.updated != self.notes[note._id].updated )
-				) {
-					self.notes[note._id] = new Note(note);
-					Note.update(note._id);
-				}
+				self.notes[note._id] = new Note(note);
+				Note.update(note._id);
 			}
 		});
 		
@@ -225,16 +220,22 @@ $(function() {
 				self.notes_list[hash].length = 0;
 				for(var i = 0; i < notes.length; i++) {
 					var content = undefined;
-					if( self.notes[ notes[i]._id ] && self.notes[ notes[i]._id ].content !== undefined )
-						content = self.notes[ notes[i]._id ].content;
-					self.notes[ notes[i]._id ] = new Note(notes[i]);
-					if( content && ( self.notes[ notes[i]._id ].content === undefined ) )
-						self.notes[ notes[i]._id ].content = content;
+					var id = notes[i]._id;
 
-					self.notes_list[hash].push( notes[i]._id );
+					if( self.notes[ id ] && (self.notes[ id ].content !== undefined) )
+						content = self.notes[ id ].content;
+					
+					self.notes[ id ] = new Note(notes[i]);
+
+					if( ( content !== undefined )
+						&& ( self.notes[ id ].content === undefined  )
+					)
+						self.notes[ id ].content = content;
+		
+					self.notes_list[hash].push( id );
 				}
-				Note.update({type: "list", query: options});
 			}
+			Note.update({type: "list", query: options});
 		});
 
 		var notes = [];

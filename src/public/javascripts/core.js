@@ -405,14 +405,16 @@ $(function() {
 	    			return;
 	    		var title = "";
 	    		var content = "";
-
+	    		console.log("renderer_note, got", note);
 	    		title = escapeHtml( note.title );
 	    		if ( note.content !== undefined ) {
 	    			content = e.get_note_markdown_html( note.content );
-	    			note_actions.show();
+
+	    			if( $("#note-edit").attr("data-editing") != "1" )
+	    				$("#edit-note-action").show();
 	    		} else {
 	    			//content = __("loading");
-	    			note_actions.hide();
+	    			$("#edit-note-action").hide();
 	    		}
 	    		note_title.html( title );
 				note_content.html( content );
@@ -445,12 +447,12 @@ $(function() {
 		var notes_list = $(list_dom);
 
 	    var options = {};
-	    var options_value = notes_list.attr("data-list");
+	    var options_value = notes_list.attr("data-list") || "" ;
 	    if( options_value ) {
 	    	try {
 	    		options = $.parseJSON( notes_list.attr("data-list") );
 	    	} catch(e) {
-	    		console.log(e);
+	    		
 	    	}
 	    }
 
@@ -480,7 +482,7 @@ $(function() {
 
 		for(var id in e.tags) {
 			if( e.tags.hasOwnProperty(id) )  {
-				$("button", tags).before("<li ><a href='"
+				tags.append("<li ><a href='"
 					+ root + "/#/tag/" + escapeHtml( e.tags[id].name ) + "'><i class='icon-tag'></i> " + escapeHtml( e.tags[id].name ) + "</a></li>");
 			}
 		}
@@ -510,12 +512,40 @@ $(function() {
 	var e = window.EVERPIECE;
 	window.e = e; // = =
 
-	$("#content").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
-	$("#sidebar").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
-	$(window).resize(function(e) {
-		$("#content").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
-		$("#sidebar").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
-	});
+
+	var button_edit_note = $("#edit-note-action");
+
+	var set_height = function(e) {
+		var body = $("body");
+		var header = $("#header");
+		var container = $("#container");
+		var footer = $("#footer");
+		var sidebar = $("#sidebar");
+		var sidebar_meta = $("#sidebar-meta");
+		var note_list = $("#note-list");
+		var note_meta = $("#note .note-meta");
+		var note_content = $("#note .note-content");
+
+		container.height(body.height()
+			- header.height()
+			- footer.height());
+
+		note_content.height(
+			body.height()
+			- header.height()
+			- footer.height()
+			- note_meta.height()
+			- 10);
+		note_list.height( 
+			body.height()
+			- header.height()
+			- footer.height()
+			- sidebar_meta.height()
+			- 100);
+	};
+	
+	set_height();
+	$(window).resize(set_height);
 
 	$("#note-edit-content").keydown(function(e) {
 		insertTab(this, e);
@@ -537,7 +567,7 @@ $(function() {
 		event.preventDefault();
 	});
 
-	$("#note .note-edit-link").click(function() {
+	$("#edit-note-action").click(function() {
 		var id = $("#note").attr("data-id");
 		Note.findById(id, function(err, note) {
 			$('#note-edit input[name="_id"]').val( note._id );
@@ -548,6 +578,9 @@ $(function() {
 			$("#note-edit").show();
 			$("#note").hide();
 			$("#add-note-action").hide();
+			$("#edit-note-action").hide();
+
+			$("#note-edit").attr("data-editing", "1");
 		})
 	});
 
@@ -555,6 +588,9 @@ $(function() {
 		$("#note-edit").show();
 		$("#note").hide();
 		$("#add-note-action").hide();
+		$("#edit-note-action").hide();
+
+		$("#note-edit").attr("data-editing", "1");
 	});
 
 	$("#note-edit-save").click(function() {
@@ -570,6 +606,7 @@ $(function() {
 		$("#note").show();
 		$("#add-note-action").show();
 		$("#note-edit form input, #note-edit form textarea").val("");
+		$("#note-edit").attr("data-editing", "0");
 
 		if( note._id ) {
 			e.route("/notes/" + note._id);
@@ -582,8 +619,10 @@ $(function() {
 	$("#note-edit-discard").click(function() {
 		$("#note-edit form input, #note-edit form textarea").val("");
 		$("#note-edit").hide();
+		$("#note-edit").attr("data-editing", "0");
 		$("#note").show();
 		$("#add-note-action").show();
+		e.renderer();
 	});
 
 	e.get_session(function() {

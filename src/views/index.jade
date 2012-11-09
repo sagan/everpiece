@@ -1,51 +1,44 @@
 extends layout
 
 block content
-	div#header.offset1.navbar.navbar-fixed-top
-		div.navbar-inner
-			div.row-fluid
-				h1.span7
-					a(href="#{root}/#/") #{title} 
-				ul.span4.nav.nav-pills
-					li 
-						a(href="")#user
-			div#toolbar.row-fluid
-				ul#tags.nav.nav-pills
-					button(style="display: inline;").btn#add-note-action
-						i.icon-edit
-						span  Create Note
-	div#container.offset1.container
-		div.row-fluid
+	div#header.navbar.navbar-fixed-top.container
+		div.row.navbar-inner
+			h1#title.span3
+				a(href="#{root}/#/") #{title}
+			ul#tags.offset1.nav.nav-pills.span7
+			div#toolbar.pull-right
+				button(accesskey='e', title="edit").btn#edit-note-action
+					i.icon-edit
+					span
+				button(accesskey='n', title="create").btn#add-note-action
+					i.icon-edit
+					span +
+	div#container.container
+		div.row
 			div#sidebar.span3
-				div.clearfix
+				div#sidebar-meta.clearfix
 					form#search.navbar-search
 							input(type="text", name="words").search-query.input-medium
 							button.btn
 								i.icon-search
 				ul#note-list.note-list
-			div#content.span8
+			div#content.span9
 				div#note.note.container-fluid
-					div
+					div.note-meta
 						h2.note-title
-						span.note-actions
-							button.btn.note-edit-link
-								i.icon-edit
-								span  Edit
-					div
-						div.span6.note-content
+					div.note-content
 				div#note-edit.container-fluid
-					div.span6
-						form.row
+					div.row-fluid
+						form
 							input(type="hidden", name="_id")
 							div
 								input(type="text", name="title", placeholder="title")
 							div
 								input(type="text", name="tags", placeholder="tags")
-							textarea(name="content")#note-edit-content
-							p.btn-toolbar
-								button(type="button")#note-edit-save.btn.btn-primary save 
-								button(type="button")#note-edit-discard.btn  discard
-					div.span1
+								textarea(name="content")#note-edit-content
+								p.btn-toolbar
+									button(type="button")#note-edit-save.btn.btn-primary save 
+									button(type="button")#note-edit-discard.btn  discard
 					
-	div#footer.offset1.container
-		p &copy;2012 <a href="https://github.com/sagan/everpiece" target="_blank">everpiece</a>
+	div#footer.container
+		p &copy;2012 <a href="https://github.com/sagan/everpiece" target="_blank">everpiece</a> <a href="" id="user"></a>

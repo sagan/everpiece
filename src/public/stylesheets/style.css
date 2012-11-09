@@ -1,15 +1,44 @@
+
+/* layout */
 html, body {
-    height: 100%;
     overflow: hidden;
-    position: fixed;
+    height: 100%;
+    width: 100%;
+    margin: 0;
 }
 
 body {
-	padding-top: 120px;
+	padding-top: 66px;
+}
+
+#header {
+
+}
+
+#tags, #toolbar {
+	margin-top: 10px;
 }
 
 #container {
 	
+}
+
+#container > div {
+	
+}
+
+#content {
+	height: 100%;
+}
+
+#note-list {
+	overflow-y: hidden;
+}
+
+#note .note-content {
+	overflow-y: auto;
+	width:100%;
+	height: 300px;
 }
 
 #footer {
@@ -17,28 +46,14 @@ body {
 	height: 40px;
 }
 
-#container > div {
-	
+
+/* content */
+#note-edit form {
+
 }
-
-#sidebar {
-	overflow-y: auto;
-	height: 300px;
-}
-
-#content {
-	overflow-y: auto;
-	height: 300px;
-}
-
-
-a {
-  color: #00B7FF;
-}
-
 #note-edit textarea {
     width: 100%;
-    height: 200px;
+    min-height: 400px;
 }
 
 #note-edit input {
