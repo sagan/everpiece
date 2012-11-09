@@ -1,6 +1,36 @@
-body {
-  //font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+html, body {
+    height: 100%;
+    overflow: hidden;
+    position: fixed;
 }
+
+body {
+	padding-top: 120px;
+}
+
+#container {
+	
+}
+
+#footer {
+	margin-bottom: 10px;
+	height: 40px;
+}
+
+#container > div {
+	
+}
+
+#sidebar {
+	overflow-y: auto;
+	height: 300px;
+}
+
+#content {
+	overflow-y: auto;
+	height: 300px;
+}
+
 
 a {
   color: #00B7FF;
@@ -15,11 +45,8 @@ a {
 	width: 100%;
 }
 
-#sidebar {
-	//min-height: 1000px;
-}
-
 .note h2 {
 	display: inline;
 	margin-right: 20px;
 }
+

@@ -1,38 +1,39 @@
 extends layout
 
 block content
-	div.offset1.row-fluid
-		h1.span7
-			a(href="#{root}/#/") #{title} 
-		ul.span4.nav.nav-pills
-			li 
-				a(href="")#user
-	div#content.offset1.row-fluid
-		div
-			ul#tags.nav.nav-pills
-				button(style="display: inline;").btn#add-note-action
-					i.icon-edit
-					span  Create Note
-		div#container.row-fluid
-			div#sidebar.span2
-				div.row
+	div#header.offset1.navbar.navbar-fixed-top
+		div.navbar-inner
+			div.row-fluid
+				h1.span7
+					a(href="#{root}/#/") #{title} 
+				ul.span4.nav.nav-pills
+					li 
+						a(href="")#user
+			div#toolbar.row-fluid
+				ul#tags.nav.nav-pills
+					button(style="display: inline;").btn#add-note-action
+						i.icon-edit
+						span  Create Note
+	div#container.offset1.container
+		div.row-fluid
+			div#sidebar.span3
+				div.clearfix
 					form#search.navbar-search
-						input(type="text", name="words").search-query.input-small
-						button.btn
-							i.icon-search
-				div.row
-					ul#note-list.note-list
-			div#content.offset1.span8
-				div.row#note.note
-					div.row
+							input(type="text", name="words").search-query.input-medium
+							button.btn
+								i.icon-search
+				ul#note-list.note-list
+			div#content.span8
+				div#note.note.container-fluid
+					div
 						h2.note-title
 						span.note-actions
 							button.btn.note-edit-link
 								i.icon-edit
 								span  Edit
-					div.row
+					div
 						div.span6.note-content
-				div.row#note-edit
+				div#note-edit.container-fluid
 					div.span6
 						form.row
 							input(type="hidden", name="_id")
@@ -44,5 +45,7 @@ block content
 							p.btn-toolbar
 								button(type="button")#note-edit-save.btn.btn-primary save 
 								button(type="button")#note-edit-discard.btn  discard
-					div.span4
+					div.span1
 					
+	div#footer.offset1.container
+		p @2012

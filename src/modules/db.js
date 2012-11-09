@@ -32,17 +32,25 @@ var now = function() {
 
 var noteSchema = new mongoose.Schema({
 	username: { type: String, index: true, required: true },
+	synced: { type: Boolean, index: true, default: false, required: true },
 
-	syncd: { type: Boolean, index: true, default: false, required: true },
 	type: {type: String, index: true, default: "markdown", required: true},
 	archive: { type: Boolean, index: true, default: false, required: true },
 	star: { type: Boolean, index: true, default: false, required: true },
 	title: { type: String, index: true, default: "", required: true },
 	created: { type: Date, index: true, default: now, required: true },
 	updated: { type: Date, index: true, default: now, required: true },
-	
 	content: { type: String, index: false, default: "" }, // storage markdown
-	tags: { type: [String], index: true },
+	tags: { type: [String], index: true, trim: true, validate:  [function(tags) {
+		if( ! tags instanceof Array )
+			return false;
+		for(var i = 0; i < tags.length; i++) {
+			if( !tags[i] )
+				return false;
+		}
+		return true;
+	}, 'invalid'] },
+	
 	guid: { type: String, index: true },
 	updateSequenceNum: { type: Number, index: true },
 	//tagGuids: { type: [String], index: true },

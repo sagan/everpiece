@@ -1,6 +1,22 @@
 $(function() {
 	// a front end interface
 
+	// tools functions
+	var random_string = function(length) {
+		var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz'.split('');
+
+		if (! length) {
+			//length = Math.floor(Math.random() * chars.length);
+			length = 32; // make sure unique
+		}
+
+		var str = '';
+		for (var i = 0; i < length; i++) {
+			str += chars[Math.floor(Math.random() * chars.length)];
+		}
+		return str;
+	}
+
 	// mongoose style API ( e.g. all callback first paramater is error)
 	// async, but functions are expected to return right away.
 	// Objet Store
@@ -11,7 +27,7 @@ $(function() {
 			controller receive page events (mesages), then use model to fetch data and pass callback
 				when data accessed, update view layer data and renderer
 			model: data that persistently storage. all data access are async.
-				(but expected to finish right now)
+				but expected to finish  right now and internally sync with background
 					sync abstrat layer: sync local database with server. continusly run in background.
 					Read  (fetch from server) on need and idle (cache.)
 					Write (push to server) when client side data changed immediatele. (use queue)
@@ -28,6 +44,9 @@ $(function() {
 			this.title = note.title;
 			this.content = note.content;
 			this.tags = note.tags;
+
+			// client private attrs:
+			// _clientStatus: "new", "updated"
 		}
 	};
 	Note.prototype.save = function(callback) {
@@ -38,8 +57,16 @@ $(function() {
 	Note.prototype.valid = function() { // for new created item
 		return true;
 	};
-
+	Note.update = function(arg) {
+		if( !Note.updating ) {
+			Note.updating = true;
+			Note.updated.fire(arg);
+			Note.updating = false;
+		}
+	};
 	Note.updated = $.Callbacks();
+	Note.updating = false;
+
 	Note.init = function() {
 		Note._noteStore = new NoteStoreMemory();
 	};
@@ -69,6 +96,7 @@ $(function() {
 	// Only NoteStore should access the NoteSync.
 
 	var NoteSync = {};
+	NoteSync.queue = []; // {}
 	NoteSync.init = function() {
 		this.server = document.location.protocol + "//"
 				+ document.location.host;
@@ -133,7 +161,8 @@ $(function() {
 
 	var NoteStoreMemory = function() {
 		this.notes = {};
-		this.nodes_list = {};
+		this.notes_tmp = {};
+		this.notes_list = {};
 	};
 	NoteStoreMemory.prototype.synced = function() {
 		return true;
@@ -141,15 +170,21 @@ $(function() {
 	// read: find, findById. cache
 	NoteStoreMemory.prototype.findById = function(id, callback) {
 		var self = this;
+		callback(null, self.notes[id]);
+
+		if( !Note.updating )
 		NoteSync.findById(id, function(err, note) {
 			if( !err && note ) {
-				if( !self.notes[note._id] || note.updated != self.notes[note._id].updated ) {
+				if( !self.notes[note._id] || 
+						( (self.notes[note._id].content === undefined ) ||
+						note.updated != self.notes[note._id].updated )
+				) {
 					self.notes[note._id] = new Note(note);
-					Note.updated.fire(note._id);
+					Note.update(note._id);
 				}
 			}
 		});
-		callback(null, self.notes[id]);
+		
 	};
 
 	/*
@@ -181,26 +216,52 @@ $(function() {
 		var self = this;
 		options = self.get_query( options );
 		hash = encodeURIComponent( $.param(options) );
-		if( !this.nodes_list[hash] )
-			this.nodes_list[hash] = [];
+		if( !this.notes_list[hash] )
+			this.notes_list[hash] = [];
+
+		if( !Note.updating )
 		NoteSync.find(options, function(err, notes) {
 			if( ! err ) {
-				self.nodes_list[hash].length = 0;
+				self.notes_list[hash].length = 0;
 				for(var i = 0; i < notes.length; i++) {
-					self.nodes_list[hash].push( notes[i]._id );
+					var content = undefined;
+					if( self.notes[ notes[i]._id ] && self.notes[ notes[i]._id ].content !== undefined )
+						content = self.notes[ notes[i]._id ].content;
+					self.notes[ notes[i]._id ] = new Note(notes[i]);
+					if( content && ( self.notes[ notes[i]._id ].content === undefined ) )
+						self.notes[ notes[i]._id ].content = content;
+
+					self.notes_list[hash].push( notes[i]._id );
 				}
-				Note.updated.fire({type: "list", query: options});
+				Note.update({type: "list", query: options});
 			}
 		});
-		callback(null, this.nodes_list[hash]);
+
+		var notes = [];
+		for( var i = 0; i < this.notes_list[hash].length; i++ )
+			notes.push(this.notes[ this.notes_list[hash][i] ]);
+
+		callback(null, notes);
+		
 	};
-	// write: create, save, remove. do not cache
+
+	// write: create, save, remove.
 	NoteStoreMemory.prototype.create = function(note, callback) {
 		var self = this;
+
+		var tmpid = "tmp-" + random_string(32);
+		note._id = tmpid;
+		note._clientStatus = "new";
+		self.notes_tmp[tmpid] = note;
+		
+		callback(null, self.notes_tmp[tmpid]);
+
+		if( !Note.updating )
 		NoteSync.create(note, function(err, note) {
 			if( !err ) {
 				self.notes[note._id] = new Note(note);
-				Note.updated.fire(note._id);
+				Note.update({event: "persistent", tmpid: tmpid, id: note._id});
+				delete self.notes_tmp[tmpid];
 			}
 			callback(err, note ? self.notes[note._id] : null);
 		});
@@ -209,12 +270,16 @@ $(function() {
 	NoteStoreMemory.prototype.save = function(note, callback) {
 		var self = this;
 		self.notes[note._id] = note;
+		self.notes[note._id]._clientStatus = "updated";
+
+		if( !Note.updating )
 		NoteSync.update(note, function(err, note) {
 			if( !err ) {
 				self.notes[note._id] = new Note(note);
+				Note.update(note._id);
 			}
-			callback(err, note ? self.notes[note._id] : null);
 		});
+		callback(err, self.notes[note._id]);
 	};
 	NoteStoreMemory.prototype.remove = function(options, callback) {
 		var self = this;

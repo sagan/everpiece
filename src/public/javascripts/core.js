@@ -215,10 +215,8 @@ $(function() {
 	e.update_notes_list = function(list, notes) {
 		for(var i = 0; i < notes.length; i++) {
 			var item = notes[i];
-			for( var j = 0; j < item.tags.length; j++ ) {
-				if( $.inArray( item._id, list) == -1 ) {
-					list.push(item._id);
-				}
+			if( $.inArray( item._id, list) == -1 ) {
+				list.push(item._id);
 			}
 		}
 	};
@@ -322,8 +320,10 @@ $(function() {
 			type: "POST",
 			contentType: "application/json; charset=utf-8",
 			success: function(data) {
-				e.notes[data.item._id] = data.item;
-				e.notes[data.item._id].content = note.content;
+				if( !data.error ) {
+					e.notes[data.item._id] = data.item;
+					e.notes[data.item._id].content = note.content;
+				}
 				callback(data);
 			},
 			error: function(e) {
@@ -334,43 +334,48 @@ $(function() {
 
 	// a partial reflesh event!
 	//
+
+	var model_renderer = function(error) {
+		if( ! error ) {
+			e.renderer();
+		}
+	};
+
 	e.route = function(path) {
 	    console.log("route ", path);
-	    
-	    var notes_list_main = $("#note-list");
-	    var note = $("#note");
 	    var match;
 
-	    if( path == "/" ) {
-	    	notes_list_main.attr("data-list", "latest");
-	    	e.update_notes();
-	    } else if( match = path.match(/^\/tag\/(.+)$/) ) {
-	    	var tag = match[1];
-	    	notes_list_main.attr("data-list", "tag");
-	    	notes_list_main.attr("data-value", tag);
-	    	e.update_notes({tag: tag});
-	    } else if( match = path.match(/^\/search\/(.*)$/) ) {
-	    	var search = match[1].trim();
-	    	
-	    	if( search != "" ) {
-	    		notes_list_main.attr("data-list", "search");
-	    		notes_list_main.attr("data-value", search);
-	    		e.update_notes({s: search});
-	    	} else {
-	    		notes_list_main.attr("data-list", "latest");
-	    		e.update_notes();
-	    	}
-	    }else if( match = path.match(/^\/notes\/(.+)$/) ) {
+	    if( match = path.match(/^\/notes\/(.+)$/) ) {
+	    	var note = $("#note");
 	    	var id = match[1];
 	    	note.attr("data-id", id);
-	    	e.get_note(id);
 	    	$.address.value(path);
+	    } else {
+	    	var notes_list_main = $("#note-list");
+	    	var options = {};
+
+			if( path == "/" ) {
+			} else if( match = path.match(/^\/tag\/(.+)$/) ) {
+	    		var tag = match[1].trim();
+	    		options.tag = tag;
+			} else if( match = path.match(/^\/search\/(.+)$/) ) {
+				var search = match[1].trim();
+				if( search != "" ) {
+	    			options.s = search;
+	    		}
+			}
+	    
+	   		notes_list_main.attr("data-list", $.toJSON(options));
 	    }
 
 	    e.renderer();
 	};
 
 	// view layer
+	
+	var View = {}; // view name -> data.  key: data-list, data-name
+
+
 	var progress_link = function(event) {
 		e.route( $(this).attr('href').replace(/^.*#/, '') );
     	event.preventDefault();
@@ -390,27 +395,31 @@ $(function() {
 		var note = $(dom);
 		var note_title = $(".note-title", note);
 		var note_content = $(".note-content", note);
-		var note_actions = $(".note-actions", note).hide();
+		var note_actions = $(".note-actions", note);
 
 	    var id = note.attr("data-id");
-	    var title = "";
-	    var content = "";
 	    
 	    if( id  ) {
-	    	if ( e.notes[id] ) {
-	    		title = escapeHtml( e.notes[id].title );
-	    		if ( e.notes[id].content !== null ) {
-	    			content = e.get_note_markdown_html( e.notes[id].content );
+	    	Note.findById(id, function(error, note) {
+	    		if( error || !note )
+	    			return;
+	    		var title = "";
+	    		var content = "";
+
+	    		title = escapeHtml( note.title );
+	    		if ( note.content !== undefined ) {
+	    			content = e.get_note_markdown_html( note.content );
 	    			note_actions.show();
+	    		} else {
+	    			//content = __("loading");
+	    			note_actions.hide();
 	    		}
-	    		else
-	    			content = __("loading");
-	    	}
-	    	
+	    		note_title.html( title );
+				note_content.html( content );
+	    	});
+	    } else {
+	    	note_actions.hide();
 	    }
-	 
-		note_title.html( title );
-		note_content.html( content );
 	};
 
 	// renderer
@@ -433,37 +442,37 @@ $(function() {
 
 	// accept a DOM object
 	e.renderer_list = function(list_dom) {
-		notes_list = $(list_dom);
-		notes_list.empty();
+		var notes_list = $(list_dom);
 
-	    var list = notes_list.attr("data-list");
-	    var value = notes_list.attr("data-value");
+	    var options = {};
+	    var options_value = notes_list.attr("data-list");
+	    if( options_value ) {
+	    	try {
+	    		options = $.parseJSON( notes_list.attr("data-list") );
+	    	} catch(e) {
+	    		console.log(e);
+	    	}
+	    }
+
+	    Note.find(options, function(error, notes) {
+	    	if( error )
+	    		return;
+	    	notes_list.empty();
+	    	for(var i = 0; i < notes.length; i++) {
+	    		notes_list.append("<div class='note-list-item'></div>"
+	    			+ "<a href='" + "#/notes/" + notes[i]._id  + "'>"
+	    			+ ( notes[i].title ? escapeHtml( notes[i].title ) : "&nbsp;&nbsp;&nbsp;&nbsp;" )
+	    			+ "</a>"
+	    			+ "</div>");
+	    	}
+	    });
+
 	    
-	    if( !list )
-	    	return;
-
-	    var note_list = [];
-
-	    if( list == "latest" ) {
-	    	note_list = e.notes_general["latest"];
-	    } else if( list == "search" ) {
-	    	note_list = e.get_notes_list_search( value );
-	    } else if( list == "tag" ) { // tag
-	    	note_list = e.get_notes_list_tag( value );
-	    }
-
-	    for(var i = 0; i < note_list.length; i++) {
-	    	notes_list.append("<div class='note-list-item'></div>"
-	    		+ "<a href='" + _l("/#/notes/" + note_list[i])  + "'>"
-	    		+ ( e.notes[note_list[i]].title ? escapeHtml( e.notes[note_list[i]].title ) : "&nbsp;&nbsp;&nbsp;&nbsp;" )
-	    		+ "</a>"
-	    		+ "</div>");
-	    }
 
 	};
 
 	e.renderer = function() {
-		
+
 		// tags
 		var tags = $("#tags");
 		//tags.empty();
@@ -486,9 +495,12 @@ $(function() {
 	    e.renderer_note($("#note")[0]);
 
 	    e.rebind_links();
+
 	};
 
-	
+	Note.updated.add(function(event) {
+		e.renderer();
+	});
 
 
 });
@@ -497,6 +509,13 @@ $(function() {
 $(function() {
 	var e = window.EVERPIECE;
 	window.e = e; // = =
+
+	$("#content").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
+	$("#sidebar").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
+	$(window).resize(function(e) {
+		$("#content").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
+		$("#sidebar").height( $("body").height() - $("#header").height() - $("#footer").height() - 10);
+	});
 
 	$("#note-edit-content").keydown(function(e) {
 		insertTab(this, e);
@@ -520,14 +539,16 @@ $(function() {
 
 	$("#note .note-edit-link").click(function() {
 		var id = $("#note").attr("data-id");
-		$('#note-edit input[name="_id"]').val( id );
-		$('#note-edit form input[name="title"]').val( e.notes[id].title);
-		$('#note-edit form input[name="tags"]').val( e.notes[id].tags ? e.notes[id].tags.join(", ") : "");
-		$('#note-edit form textarea[name="content"]').val( e.notes[id].content );
+		Note.findById(id, function(err, note) {
+			$('#note-edit input[name="_id"]').val( note._id );
+			$('#note-edit form input[name="title"]').val( note.title);
+			$('#note-edit form input[name="tags"]').val( note.tags ? note.tags.join(", ") : "");
+			$('#note-edit form textarea[name="content"]').val( note.content );
 
-		$("#note-edit").show();
-		$("#note").hide();
-		$("#add-note-action").hide();
+			$("#note-edit").show();
+			$("#note").hide();
+			$("#add-note-action").hide();
+		})
 	});
 
 	$("#add-note-action").click(function() {
@@ -538,7 +559,10 @@ $(function() {
 
 	$("#note-edit-save").click(function() {
 		var note = $("#note-edit form").serializeObject();
-		note.tags = note.tags.split(/[\s,]+/);
+		if( note.tags)
+			note.tags = note.tags.split(/[\s,]+/);
+		else
+			note.tags = [];
 
 		e.create_or_update_note( note, e.update_tags );
 

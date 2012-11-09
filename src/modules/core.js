@@ -34,6 +34,13 @@ var add_tags = function(username, tags) {
 	});
 };
 
+var trim_note_fields = function(note) {
+	note.username = undefined;
+	note.synced = undefined;
+	note.guid = undefined;
+	note.updateSequenceNum = undefined;
+}
+
 exports.auth = function(req, res){
 	var evernote_callback = config.server_url + '/auth_callback';
 	
@@ -126,11 +133,14 @@ exports.get_note = function(req, res){
 	
 	var user = req.session.user;
 	var id = req.params.id;
+	var fields = 'username _id type tags archive star title content updated created';
 
-	Note.findById(id, function(err, note) {
+	Note.findById(id, fields, function(err, note) {
 		if( err || !note || note.username != user.username ) {
 			res.send({error: "not_fund"}, 200);
 		} else {
+			note.username = undefined;
+			console.log("note ", note);
 			res.send({item: note}, 200);
 		}
 	});
@@ -214,6 +224,9 @@ exports.create_note = function(req, res) {
 			return res.send({error: err}, 200);
 		}
 		add_tags(note.username, note.tags);
+
+		trim_note_fields( note );
+
 		return res.send({item: note}, 200);
 	});
 	
@@ -257,6 +270,7 @@ exports.update_note = function(req, res) {
 						res.send({error: err}, 200);
 					}
 					add_tags(saved_note.username, saved_note.tags);
+					trim_note_fields( saved_note );
 					return res.send({item: saved_note}, 200);
 				});
 			}
