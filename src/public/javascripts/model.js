@@ -1,5 +1,11 @@
+
+// model layer
+
 $(function() {
-	// a front end interface
+
+	var server = document.location.protocol + "//"
+			+ document.location.host;
+			+ document.location.pathname;
 
 	// tools functions
 	var random_string = function(length) {
@@ -16,27 +22,6 @@ $(function() {
 		}
 		return str;
 	}
-
-	// mongoose style API ( e.g. all callback first paramater is error)
-	// async, but functions are expected to return right away.
-	// Objet Store
-	// then internally sync with remote server.
-	/*
-		front end structure
-			view abstract layer: html and view data.data access are sync. use them to renderering
-			controller receive page events (mesages), then use model to fetch data and pass callback
-				when data accessed, update view layer data and renderer
-			model: data that persistently storage. all data access are async.
-				but expected to finish  right now and internally sync with background
-					sync abstrat layer: sync local database with server. continusly run in background.
-					Read  (fetch from server) on need and idle (cache.)
-					Write (push to server) when client side data changed immediatele. (use queue)
-
-					When fetched new data from server, view data should be updated and re-renderer.
-					event or callback ?
-
-
-	*/
 
 	var Note = function(note) {
 		if( note ) {
@@ -85,25 +70,18 @@ $(function() {
 		callback = callback || $.noop;
 		return Note._noteStore.create(note, callback);
 	};
-	Note.remove = function(options, callback) {
+	Note.remove = function(id, callback) {
 		callback = callback || $.noop;
-		return Note._noteStore.remove(options, callback);
+		return Note._noteStore.remove(id, callback);
 	};
-
-
 
 
 	// Only NoteStore should access the NoteSync.
 
 	var NoteSync = {};
 	NoteSync.queue = []; // {}
-	NoteSync.init = function() {
-		this.server = document.location.protocol + "//"
-				+ document.location.host;
-				+ document.location.pathname;
-	};
 	NoteSync.findById = function(id, callback) {
-		$.ajax(this.server + "/notes/" + id, {
+		$.ajax(server + "/notes/" + id, {
 			success: function(data, textStatus) {
 				callback(data.error, data.item);
 			},
@@ -113,7 +91,7 @@ $(function() {
 		});
 	};
 	NoteSync.find = function(options, callback) {
-		$.ajax(this.server + "/notes", {
+		$.ajax(server + "/notes", {
 			data: options,
 			success: function(data, textStatus) {
 				callback(data.error, data.items);
@@ -124,7 +102,7 @@ $(function() {
 		});
 	};
 	NoteSync.create = function(note, callback) {
-		$.ajax(this.server + "/notes", {
+		$.ajax(server + "/notes", {
 			dataType: "json",
 			data: $.toJSON(note),
 			type: "POST",
@@ -138,7 +116,7 @@ $(function() {
 		});
 	};
 	NoteSync.update = function(note, callback) {
-		$.ajax(this.server + "/notes/" + note._id, {
+		$.ajax(server + "/notes/" + note._id, {
 			dataType: "json",
 			data: $.toJSON(note),
 			type: "POST",
@@ -151,10 +129,7 @@ $(function() {
 			}
 		});
 	};
-	NoteSync.remove = function(options, callback) {
-		if( typeof options == "string" && options != "" )
-			options = {_id: options};
-
+	NoteSync.remove = function(id, callback) {
 		callback({error: "Not Implemented"});
 	};
 
@@ -280,17 +255,76 @@ $(function() {
 				Note.update(note._id);
 			}
 		});
-		callback(err, self.notes[note._id]);
+		callback(null, self.notes[note._id]);
 	};
-	NoteStoreMemory.prototype.remove = function(options, callback) {
+	NoteStoreMemory.prototype.remove = function(id, callback) {
 		var self = this;
-		NoteSync.remove(options, function(err) {
+		NoteSync.remove(id, function(err) {
 			callback( err );
 		});
 	};
 
+
+	var Tag = function(tag) {
+		if( tag ) {
+			this.name = note.name
+		}
+	};
+	Tag.update = function(arg) {
+		if( !Tag.updating ) {
+			Tag.updating = true;
+			Tag.updated.fire(arg);
+			Tag.updating = false;
+		}
+	};
+	Tag.updated = $.Callbacks();
+	Tag.updating = false;
+	Tag.init = function() {
+		Tag._tagStore = new TagStoreMemory();
+	};
+	Tag.synced = function() {
+		return Tag._tagStore.synced();
+	};
+	Tag.find = function(callback) {
+		callback = callback || $.noop;
+		return Tag._tagStore.find(callback);
+	};
+	var TagSync = {};
+	TagSync.find = function(callback) {
+		$.ajax(server + "/tags", {
+			success: function(data, textStatus) {
+				callback(data.error, data.items);
+			},
+			error: function(e) {
+				callback(e);
+			}
+		});
+	};
+
+	var TagStoreMemory = function() {
+		this.tags = {};
+	};
+	TagStoreMemory.prototype.synced = function() {
+		return true;
+	};
+	TagStoreMemory.prototype.find = function(callback) {
+		var self = this;
+		callback(null, self.tags);
+
+		if( !Tag.updating )
+		TagSync.find(function(err, tags) {
+			if( !err ) {
+				self.tags = tags;
+				Tag.update();
+			}
+		});
+		
+	};
+
 	Note.init();
-	NoteSync.init();
+	Tag.init();
+
 	window.Note = Note;
+	window.Tag = Tag;
 
 });

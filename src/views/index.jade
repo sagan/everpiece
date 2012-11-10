@@ -21,7 +21,7 @@ block content
 							input(type="text", name="words").search-query.input-medium
 							button.btn
 								i.icon-search
-				ul#note-list.note-list
+				div#note-list.note-list
 			div#content.span9
 				div#note.note.container-fluid
 					div.note-meta
@@ -35,10 +35,10 @@ block content
 								input(type="text", name="title", placeholder="title")
 							div
 								input(type="text", name="tags", placeholder="tags")
-								textarea(name="content")#note-edit-content
+								textarea(name="content")
 								p.btn-toolbar
-									button(type="button")#note-edit-save.btn.btn-primary save 
-									button(type="button")#note-edit-discard.btn  discard
+									button(type="button").note-edit-save.btn.btn-primary save 
+									button(type="button").note-edit-discard.btn  discard
 					
 	div#footer.container
 		p &copy;2012 <a href="https://github.com/sagan/everpiece" target="_blank">everpiece</a> <a href="" id="user"></a>
