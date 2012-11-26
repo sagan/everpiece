@@ -28,8 +28,9 @@ $(function() {
 			this._id = note._id;
 			this.title = note.title;
 			this.content = note.content;
+			this.updated = note.updated;
 			this.tags = note.tags;
-
+			this.category = note.category;
 			// client private attrs:
 			// _clientStatus: "new", "updated"
 		}
@@ -267,7 +268,8 @@ $(function() {
 
 	var Tag = function(tag) {
 		if( tag ) {
-			this.name = note.name
+			this.name = tag.name;
+			this.parent = tag.parent;
 		}
 	};
 	Tag.update = function(arg) {
@@ -302,7 +304,7 @@ $(function() {
 	};
 
 	var TagStoreMemory = function() {
-		this.tags = {};
+		this.tags = [];
 	};
 	TagStoreMemory.prototype.synced = function() {
 		return true;
@@ -321,10 +323,145 @@ $(function() {
 		
 	};
 
+
+
+	var Category = function(category) {
+		if( category ) {
+			this.name = category.name;
+			this.parent = category.parent;
+			this.desc = category.desc;
+		}
+	};
+	Category.prototype.save = function(callback) {
+		callback = callback || $.noop;
+		return Category._categoryStore.save(this, callback);
+	};
+
+	Category.update = function(arg) {
+		if( !Category.updating ) {
+			Category.updating = true;
+			Category.updated.fire(arg);
+			Category.updating = false;
+		}
+	};
+	Category.updated = $.Callbacks();
+	Category.updating = false;
+	Category.init = function() {
+		Category._categoryStore = new CategoryStoreMemory();
+	};
+	Category.synced = function() {
+		return Category._categoryStore.synced();
+	};
+	Category.create = function(category, callback) {
+		callback = callback || $.noop;
+		return Category._categoryStore.create(category, callback);
+	};
+	Category.find = function(callback) {
+		callback = callback || $.noop;
+		return Category._categoryStore.find(callback);
+	};
+	var CategorySync = {};
+	CategorySync.find = function(callback) {
+		$.ajax(server + "/categories", {
+			success: function(data, textStatus) {
+				callback(data.error, data.items);
+			},
+			error: function(e) {
+				callback(e);
+			}
+		});
+	};
+	CategorySync.create = function(category, callback) {
+		$.ajax(server + "/categories", {
+			dataType: "json",
+			data: $.toJSON(note),
+			type: "POST",
+			contentType: "application/json; charset=utf-8",
+			success: function(data) {
+				callback(data.error, data.item);
+			},
+			error: function(e) {
+				callback(e);
+			}
+		});
+	};
+	CategorySync.update = function(category, callback) {
+		$.ajax(server + "/categories/" + category._id, {
+			dataType: "json",
+			data: $.toJSON(category),
+			type: "POST",
+			contentType: "application/json; charset=utf-8",
+			success: function(data) {
+				callback(data.error, data.item);
+			},
+			error: function(e) {
+				callback(e);
+			}
+		});
+	};
+
+	var CategoryStoreMemory = function() {
+		this.categories = [];
+	};
+	CategoryStoreMemory.prototype.synced = function() {
+		return true;
+	};
+	CategoryStoreMemory.prototype.find = function(callback) {
+		var self = this;
+		callback(null, this.categories);
+
+		if( !Category.updating )
+		CategorySync.find(function(err, categories) {
+			if( !err ) {
+				self.categories = categories;
+				Category.update();
+			}
+		});
+		
+	};
+	CategoryStoreMemory.prototype.create = function(category, callback) {
+		var self = this;
+
+		var tmpid = "tmp-" + random_string(32);
+		category._id = tmpid;
+		category._clientStatus = "new";
+		self.categories_tmp[tmpid] = category;
+		
+		callback(null, self.categories_tmp[tmpid]);
+
+		if( !Category.updating )
+		CategorySync.create(category, function(err, category) {
+			if( !err ) {
+				self.categories[category._id] = new Category(category);
+				Category.update({event: "persistent", tmpid: tmpid, id: category._id});
+				delete self.categories_tmp[tmpid];
+			}
+			callback(err, category ? self.categories[category._id] : null);
+		});
+		
+	};
+	CategoryStoreMemory.prototype.save = function(category, callback) {
+		var self = this;
+		self.categories[category._id] = category;
+		self.categories[category._id]._clientStatus = "updated";
+
+		if( !Category.updating )
+		CategorySync.update(category, function(err, category) {
+			if( !err ) {
+				self.categories[category._id] = new Category(category);
+				Category.update(category._id);
+			}
+		});
+		callback(null, self.categories[category._id]);
+	};
+	
+
 	Note.init();
 	Tag.init();
+	Category.init();
 
 	window.Note = Note;
 	window.Tag = Tag;
+	window.Category = Category;
 
 });

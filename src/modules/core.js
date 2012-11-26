@@ -5,6 +5,8 @@ var db = require("./db");
 var Note = db.Note;
 var User = db.User;
 var Tag = db.Tag;
+var Option = db.Option;
+var Category = db.Category;
 
 var evernote = new Evernote(
 	config.evernote.api_key,
@@ -87,7 +89,7 @@ exports.get_tags = function(req, res){
 
 	Tag.find({
 		username: username
-	}, '_id name', function(err, tags) {
+	}, '_id name parent', function(err, tags) {
 		if( err )
 			return res.send({error: err}, 200);
 		return res.send({items: tags}, 200);
@@ -174,7 +176,7 @@ exports.get_notes = function(req, res) {
 	if( search )
 		conditions.title = { $regex: search, $options: 'i' };
 
-	var fields = '_id type tags archive star title updated created';
+	var fields = '_id type tags category archive star title updated created';
 
 	var sort = {};
 	sort[sortBy] = ( order == "desc" ) ? -1 : 1;
@@ -185,7 +187,7 @@ exports.get_notes = function(req, res) {
 	};
 
 	Note.find(conditions, fields, options, function(err, notes) {
-		if (err) {
+		if (err) 																																									{
 			res.send({error: err}, 200);
 		}
 		return res.send({items: notes}, 200);
@@ -203,6 +205,110 @@ exports.get_notes = function(req, res) {
 	*/
 };
 
+exports.get_options = function(req, res) {
+	var username = req.session.user.username;
+
+	Option.find({
+		username: username
+	}, 'key value updated', function(err, options) {
+		if( err )
+			return res.send({error: err}, 200);
+		return res.send({items: options}, 200);
+	});
+};
+
+exports.get_categories = function(req, res) {
+	var username = req.session.user.username;
+
+	Category.find({
+		username: username
+	}, '_id name desc parent updated', function(err, items) {
+		if( err )
+			return res.send({error: err}, 200);
+		return res.send({items: items}, 200);
+	});
+};
+
+exports.create_category = function(req, res) {
+	if(!req.body)
+		return res.send({error: 'Invalid content'}, 200);
+
+	var username = req.session.user.username;
+	var cat = req.body;
+	cat.username = username;
+	cat.updated = new Date;
+
+	Category.create(cat, function(err, item) {
+		if( err )
+			return res.send({error: err}, 200);
+		return res.send({items: item}, 200);
+	});
+};
+
+exports.update_category = function(req, res) {
+
+	var username = req.session.user.username;
+	var cat = req.body;
+
+	if( !cat )
+		return res.send({error: 'Invalid content'}, 200);
+
+	cat._id = req.params.id;
+	if( !cat._id )
+		return res.send({error: 'Invalid Paramaters'}, 200);
+
+	var new_cat = new Category;
+	new_cat.username = username;
+	new_cat._id = cat._id;
+	new_cat.updated = new Date;
+	new_cat.name = cat.name;
+	new_cat.desc = cat.desc;
+	new_cat.parent = cat.parent;
+
+	new_cat.save(function(err, item) {
+		if( err )
+			return res.send({error: err}, 200);
+		return res.send({items: item}, 200);
+	});
+};
+
+
+exports.update_option = function(req, res) {
+	if(!req.body)
+		return res.send({error: 'Invalid content'}, 200);
+
+	var username = req.session.user.username;
+	var new_option = req.body;
+	new_option.key = option.key.trim();
+	if( !new_option.key )
+		return res.send({error: "invalid"}, 200);
+
+	Option.findOne({key: new_option.key, username: username}, function(error, option) {
+		if( error || !option ) { // not found, create
+			var o = new Option();
+			o.key = new_option.key;
+			o.value = new_option.value;
+			o.username = username;
+			o.updated = new Date;
+
+			Option.create(o, function(err, co) {
+				if( err )
+					return res.send({error: 'Error create'}, 200);
+				return res.send({item: co}, 200);
+			});
+		} else { // found, update
+			option.value = new_option.value;
+			option.updated = new Date;
+
+			option.save(function(err, uo) {
+				if( err )
+					return res.send({error: 'Error update'}, 200);
+				return res.send({item: uo}, 200);
+			});
+		}
+	});
+};
+
 exports.create_note = function(req, res) {
 	
 	if(!req.body)
@@ -214,8 +320,13 @@ exports.create_note = function(req, res) {
 	var create_note = new Note();
 	create_note.title = note.title || "";
 	create_note.content = note.content || "";
+	create_note.category = note.category;
 	create_note.username = username;
 	create_note.syncd = false;
+	var now = new Date;
+	create_note.created = now;
+	create_note.updated = now;
+
 	if( note.tags instanceof Array )
 		create_note.tags = note.tags;
 
@@ -244,10 +355,15 @@ exports.create_note = function(req, res) {
 exports.update_note = function(req, res) {
 	
 	if(!req.body)
-		return res.send({error: 'Invalid content'},400);
-	
+		return res.send({error: 'Invalid content'}, 200);
+
+	var id = req.params.id;	
 	var username = req.session.user.username;
 	var new_note = req.body;
+
+	new_note._id = id;
+	if( !new_note._id )
+		return res.send({error: 'Invalid Paramaters'}, 200);	
 
 
 	Note.findById(new_note._id, function(err, note) {
@@ -260,6 +376,7 @@ exports.update_note = function(req, res) {
 				note.updated = new Date;
 				note.title = new_note.title;
 				note.content = new_note.content;
+				note.category = new_note.category;
 				note.updated = new Date;
 				note.syncd = false;
 				if( new_note.tags instanceof Array )

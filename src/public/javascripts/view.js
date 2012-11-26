@@ -5,12 +5,28 @@ $(function(){
 	var escapeHtml = window.escapeHtml;
 	var md2Html = window.md2Html;
 	var insertTab = window.insertTab;
+	var moment = window.moment;
 	
 
 	var _id = 0;
 	var id = function() {
 		return "view-" + (++_id);
-	}
+	};
+
+
+	var time = function(t) {
+		var now = moment(new Date);
+		t = moment(t);
+
+		if( now.format("YYYYMMDD") == t.format("YYYYMMDD") )
+			return t.format("HH:mm");
+		else if( now.format("YYYY") == t.format("YYYY") )
+			return t.format("DD MMM");
+		else
+			return t.format("DD MMM, YYYY");
+	};
+
+
 
 	var View = {};
 	View.create = function() {
@@ -21,7 +37,7 @@ $(function(){
 		};
 		$.extend(v.prototype, View);
 		return v;
-	}
+	};
 	View._init = function(options) {
 		if( !options )
 			options = {};
@@ -82,6 +98,7 @@ $(function(){
 		return this;
 	};
 	NoteView.prototype.render = function() {
+		var self = this;
 		var id = this.attr("data-id");
 		if( id ) {
 			Note.findById(id, function(error, note) {
@@ -89,6 +106,7 @@ $(function(){
 	    			return;
 	    		var title = "";
 	    		var content = "";
+	    		var tags = "";
 	    		console.log("renderer_note, got", note);
 
 	    		title = escapeHtml( note.title );
@@ -96,8 +114,17 @@ $(function(){
 	    			content = md2Html( note.content );
 	    		}
 
-	    		$(".note-title", this.el).html( title );
-				$(".note-content", this.el).html( content );
+	    		if( !note.tags || note.tags.length == 0 ) {
+	    			tags = "No tags";
+	    		} else {
+	    			tags = "Tags: ";
+	    			tags += escapeHtml(note.tags.join(", "));
+	    		}
+
+	    		$(".note-title", self.el).html( title );
+	    		$(".note-updated", self.el).html( moment(note.updated).format("DD MMM, YYYY HH:mm:ss | ") );
+	    		$(".note-tags", self.el).html(tags);
+				$(".note-content", self.el).html( content );
 	    	});
 		}
 
@@ -137,7 +164,7 @@ $(function(){
 	    			+ "data-id='" + notes[i]._id + "'" 
 	    			+ ">"
 	    			+ ( notes[i].title ? escapeHtml( notes[i].title ) : "&nbsp;&nbsp;&nbsp;&nbsp;" )
-	    			+ "</a>"
+	    			+ "</a> <span class='note-updated'>" + time( notes[i].updated ) +"</span>"
 	    			+ "</div>");
 	    	}
 	    	self.bind();
@@ -254,8 +281,212 @@ $(function(){
 		return this;
 	};
 
+
+	var TreeView = View.create();
+	TreeView.prototype.bind = function() {
+		var self = this;
+		return this;
+	};
+	TreeView.prototype.init = function() {
+		this.$el.dynatree({
+			onActivate: function(node) {
+        		// A DynaTreeNode object is passed to the activation handler
+        		// Note: we also get this event, if persistence is on, and the page is reloaded.
+       	 		//alert("You activated " + node.data.title);
+      		},
+			children: [
+		        {title: "Item 1"},
+		        {title: "Folder 2", isFolder: true, key: "folder2",
+		          children: [
+		            {title: "Sub-item 2.1"},
+		            {title: "Sub-item 2.2"}
+		          ]
+		        },
+		        {title: "Item 3"}
+		      ]
+		});
+		this.bind();
+		return this;
+	};
+
+	// just do it, withour consideration of performance now.
+	TreeView.prototype.tags2tree = function(arry) {
+		var roots = [], children = {};
+
+		// find the top level nodes and hash the children based on parent
+		for (var i = 0, len = arry.length; i < len; ++i) {
+			var item = arry[i],
+			pid = item.parent,
+			p = encodeURIComponent(item.parent),
+			target = !pid ? roots : (children[p] || (children[p] = []));
+
+			target.push({ title: item.name });
+		}
+
+		// function to recursively build the tree
+		var findChildren = function(parent) {
+			if (children[ encodeURIComponent(parent.title) ]) {
+				parent.children = children[ encodeURIComponent(parent.title) ];
+				for (var i = 0, len = parent.children.length; i < len; ++i) {
+					findChildren(parent.children[i]);
+				}
+        	}
+		};
+
+		// enumerate through to handle the case where there are multiple roots
+		for (var i = 0, len = roots.length; i < len; ++i) {
+			findChildren(roots[i]);
+		}
+
+		console.log("tag tree", roots);
+    	return roots;
+	};
+
+	TreeView.prototype.render = function() {
+		var self = this;
+
+		Category.find(function(err, cats) {
+			if( err )
+				return;
+			self.$el.dynatree("getRoot").removeChildren(); // chainable ?
+			self.$el.dynatree("getRoot").addChild( self.tags2tree(tags) );
+		});
+		return this;
+	};
+
+
+	var AppView = View.create();
+	AppView.prototype.render = function() {
+		this.note.render();
+		this.note_list.render();
+		this.note_edit.hide();
+		this.tags.render();
+		this.tree.render();
+	};
+
+	AppView.prototype.event_resize = function(e) {
+		var body = $("body");
+		var header = $("#header");
+		var container = $("#container");
+		var footer = $("#footer");
+		var sidebar = $("#sidebar");
+		var sidebar_meta = $("#sidebar-meta");
+		var note_list = $("#note-list");
+		var note_meta = $("#note .note-meta");
+		var note_content = $("#note .note-content");
+
+		container.height(body.height()
+			- header.height()
+			- footer.height());
+
+		note_content.height(
+			body.height()
+			- header.height()
+			- footer.height()
+			- note_meta.height()
+			- 10);
+
+		note_list.height( 
+			body.height()
+			- header.height()
+			- footer.height()
+			- sidebar_meta.height()
+			- 100);
+	};
+
+
+	AppView.prototype.bind = function() {
+		var self = this;
+
+		$.address.externalChange(function(event) {
+			var path = event.path;
+			console.log("$.address.change ", path);
+		});
+
+		$(window).resize(this.event_resize);
+
+
+		Note.updated.add(function(event) {
+			if( event && typeof event == "persistent" ) {
+				if( self.note.attr("data-id") == event.tmpid ) {
+					self.note.attr("data-id", event.id);
+				}
+			}
+			self.note.render();
+			self.note_list.render();
+			self.tags.render();
+			self.tree.render();
+		});
+
+		$("#title a", this.el).click(function() {
+			self.note_list.attr("data-list", "").render();
+		});
+
+		$("#search", this.el).submit(function(event) {
+			var words = $('input[name="words"]', this).val().trim();
+			if( words )
+				self.note_list.attr("data-list", $.toJSON({s: words})).render();
+			else
+				self.note_list.attr("data-list", "").render();
+			event.preventDefault();
+		});
+
+		$("#edit-note-action", this.el).click(function() {
+			var id = self.note.attr("data-id");
+			if( id ) {
+				self.note_edit.load(id);
+			}
+		});
+
+		$("#add-note-action", this.el).click(function() {
+			self.note_edit.load().show();
+			self.note.hide();
+		});
+
+		this.note_list.on("click", function(id) {
+			self.note.attr("data-id", id).render();
+		});
+
+		this.note_edit.on("discard", function() {
+			self.note_edit.hide();
+			self.note.show();
+		}).on("loaded", function() {
+			self.note_edit.show();
+			self.note.hide();
+		}).on("saved", function(id) {
+			self.note.empty().attr("data-id", id).render().show();
+			self.note_list.render();
+			self.note_edit.hide();
+		});
+
+		this.tags.on("click", function(tagname) {
+			self.note_list.attr("data-list", $.toJSON({tag: tagname})).render();
+		});
+	};
+	AppView.prototype.init = function() {
+		var self = this;
+		this.note = new NoteView("note");
+		this.note_list = new NoteListView("note-list");
+		this.note_edit = new NoteEditView("note-edit");
+		this.tags = new TagsView("tags");
+		this.tree = new TreeView("tree");
+
+		this.bind();
+		this.event_resize();
+
+		if( Session.username ) {
+			$("#user").html(Session.username);
+			$("#user").attr("href", "/logout");
+		} else {
+			$("#user").html(__("login"));
+			$("#user").attr("href", "/auth");
+		}
+	};
+
 	window.NoteView = NoteView;
 	window.NoteListView = NoteListView;
 	window.NoteEditView = NoteEditView;
 	window.TagsView = TagsView;
+	window.TreeView = TreeView;
+	window.AppView = AppView;
 });

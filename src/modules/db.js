@@ -30,10 +30,15 @@ var now = function() {
 	return new Date;
 };
 
+var Schema = mongoose.Schema,
+    ObjectId = Schema.ObjectId;
+
+// if String, required, it can not be null or empty.
 var noteSchema = new mongoose.Schema({
 	username: { type: String, index: true, required: true },
 	synced: { type: Boolean, index: true, default: false, required: true },
 
+	category: {type: ObjectId, index: true},
 	type: {type: String, index: true, default: "markdown", required: true},
 	archive: { type: Boolean, index: true, default: false, required: true },
 	star: { type: Boolean, index: true, default: false, required: true },
@@ -64,22 +69,40 @@ var userSchema =  new mongoose.Schema({
 	status: { type: String, index: true, required: true, default: ""}, //"invalid", "disabled", "error", "normal" or ""
 });
 
+var optionSchema =  new mongoose.Schema({
+	username: { unique: false, type: String, index: true, required: true },
+	key: {type: String, index: true, trim: true, required: true},
+	value: {type: Object, default: {}},
+	updated: {type: Date, index: true, required: true, default: now}	
+});
+
 
 var tagSchema = new mongoose.Schema({
 	username: { type: String, index: true, required: true },
 	name: { type: String, index: true, required: true },
-
+	parent: {type: String, index: true},
 	guid: { type: String, index: true },
 	syncd: { type: Boolean, index: true, default: false },
 	parentGuid: { type: String, index: true },
 	updateSequenceNum: { type: String, index: true},
 });
 
+
+var categorySchema = new mongoose.Schema({
+	username: { type: String, index: true, required: true },
+	name: {type: String, index: true, trim: true, required: true},
+	parent: {type: ObjectId, index: true},
+	desc: {type: String},
+	updated: {type: Date, index: true, required: true, default: now}
+});
+
 var Note = db.model('Note', noteSchema);
 var User = db.model('User', userSchema);
 var Tag = db.model('Tag', tagSchema);
+var Option = db.model("Option", optionSchema);
+var Category = db.model("Category", categorySchema);
 
 exports.Note = Note;
 exports.User = User;
 exports.Tag = Tag;
-
+exports.Option = Option;

@@ -12,11 +12,13 @@ body {
 }
 
 #header {
-
+	max-height: 100px;
 }
 
 #tags, #toolbar {
 	margin-top: 10px;
+	overflow: hidden;
+	max-height: 40px;
 }
 
 #container {
@@ -41,6 +43,11 @@ body {
 	height: 300px;
 }
 
+#note .note-meta {
+	border-bottom: 1px solid gray;
+	margin-bottom: 10px;
+}
+
 #footer {
 	margin-bottom: 10px;
 	height: 40px;
@@ -53,7 +60,7 @@ body {
 }
 #note-edit textarea {
     width: 100%;
-    min-height: 400px;
+    min-height: 200px;
 }
 
 #note-edit input {

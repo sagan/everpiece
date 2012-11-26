@@ -15,6 +15,8 @@ block content
 					span +
 	div#container.container
 		div.row
+			div.span2
+				div#tree
 			div#sidebar.span3
 				div#sidebar-meta.clearfix
 					form#search.navbar-search
@@ -22,15 +24,19 @@ block content
 							button.btn
 								i.icon-search
 				div#note-list.note-list
-			div#content.span9
+			div#content.span7
 				div#note.note.container-fluid
 					div.note-meta
 						h2.note-title
+						div
+							span.note-updated
+							span.note-tags
 					div.note-content
 				div#note-edit.container-fluid
 					div.row-fluid
 						form
 							input(type="hidden", name="_id")
+							input(type="hidden", name="category")
 							div
 								input(type="text", name="title", placeholder="title")
 							div
